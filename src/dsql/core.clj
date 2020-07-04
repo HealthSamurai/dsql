@@ -67,6 +67,11 @@
       (str "\"" (name node) "\"")
       (name node))))
 
+(defn parens [acc body-cb]
+  (-> (conj acc "(")
+      (body-cb )
+      (conj  ")")))
+
 (defmethod to-sql
   clojure.lang.Keyword
   [acc opts node]

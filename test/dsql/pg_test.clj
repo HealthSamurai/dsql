@@ -77,7 +77,8 @@
     :with {:fillfactor 70}
     :where ^:pg/op[:= :user.status "active"]}
 
-   ["CREATE INDEX users_id_idx IF NOT EXISTS ON users USING GIN ( EXPR??? ) WITH ( WITH??? ) TABLESPACE mytbs WHERE user.status = 'active'"]
+
+   ["CREATE INDEX users_id_idx IF NOT EXISTS ON users USING GIN ( EXPR??? ) WITH ( fillfactor = 70 ) TABLESPACE mytbs WHERE user.status = 'active'"]
    )
 
 

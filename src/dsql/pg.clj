@@ -297,10 +297,27 @@
 (defmethod ql/to-sql
   :pg/index-with
   [acc opts node]
-  (-> acc
-      (conj "(")
-      (conj "WITH???")
-      (conj ")")))
+  (ql/parens
+   acc (fn [acc]
+         (->> (dissoc node :ql/type)
+              (ql/reduce-separated
+               "," acc
+               (fn [acc [k node]]
+                 (-> acc
+                     (conj (ql/escape-ident opts k))
+                     (conj "=")
+                     (ql/to-sql opts node))))))))
+
+(defmethod ql/to-sql
+  :pg/projection
+  [acc opts data]
+  (->> (dissoc data :ql/type)
+       (ql/reduce-separated "," acc
+                            (fn [acc [k node]]
+                              (-> acc
+                                  (ql/to-sql opts node)
+                                  (conj "as" (ql/escape-ident opts k)))))))
+
 
 (defmethod ql/to-sql
   :pg/index
