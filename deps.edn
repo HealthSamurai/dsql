@@ -1,0 +1,17 @@
+{:paths ["src"]
+ :deps {org.clojure/clojure  {:mvn/version "1.10.0"}}
+
+ :aliases
+ {:dev
+  {:extra-paths ["test"]
+   :extra-deps {org.clojure/tools.nrepl       {:mvn/version "0.2.13"}
+                org.clojure/core.rrb-vector   {:mvn/version "0.0.13"}
+                cider/cider-nrepl             {:mvn/version "0.21.0"}
+                refactor-nrepl/refactor-nrepl {:mvn/version "2.4.0"}
+
+                matcho                        {:mvn/version "0.1.0-RC6"}
+                org.clojure/java.jdbc         {:mvn/version "0.6.1"}
+                cheshire                      {:mvn/version "5.6.3"}
+                org.postgresql/postgresql     {:mvn/version "9.4.1211.jre7"}}
+
+   :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]}}}
