@@ -1,5 +1,7 @@
 # dsql - datastructure query language
 
+Previous experiment - https://github.com/HealthSamurai/ql
+
 Composable and extendable version of honeysql, 
 implemented as pure functions.
 
@@ -17,7 +19,8 @@ Each node has a type, which is handled by to-sql type multimethod
 
 ```clj
 (defmethod ql/to-sql
-  :key [acc opts [f & args]]
+  :<key>
+  [acc opts node]
 
   )
 ```
