@@ -17,7 +17,8 @@ Each node has a type, which is handled by to-sql type multimethod
 
 ```clj
 (defmethod ql/to-sql
-  :key [acc opts [f & args]]
+  :<key>
+  [acc opts node]
 
   )
 ```
