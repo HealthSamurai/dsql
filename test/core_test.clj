@@ -36,12 +36,18 @@
                 (sut/to-sql opts (sut/default-type sub-node default-type)))
             acc)))))
 
+(defmacro format= [q patt]
+  `(let [res# (sut/format {} ~q)]
+     (is (= ~patt res#))
+     res#))
+
 (deftest test-dsql
 
-  (is (= ["SELECT resource as resource , 'string' as string FROM user"]
-         (sut/format {} {:ql/type :test/select
-                         :select {:resource :resource :string [:test/text "string"]}
-                         :from :user})))
+  (format=
+   {:ql/type :test/select
+    :select {:resource :resource :string [:test/text "string"]}
+    :from :user}
+   ["SELECT resource as resource , 'string' as string FROM user"])
 
   (is (= ["SELECT resource as resource , ? as string FROM user" "string"]
          (sut/format {} {:ql/type :test/select

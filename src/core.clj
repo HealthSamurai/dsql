@@ -39,19 +39,9 @@
     node))
 
 
+
 (defmulti to-sql (fn [_ opts node] (dispatch-sql opts node)))
 
-(defn format [opts node]
-  (let [sql-vec (to-sql [] opts node)]
-    (loop [[x & xs] sql-vec
-           sql-str []
-           params []]
-      (let [[sql-str params] (if (vector? x)
-                               [(conj sql-str (first x)) (conj params (second x))]
-                               [(conj sql-str x) params])]
-        (if (empty? xs)
-          (into [(str/join " " sql-str)] params)
-          (recur xs sql-str params))))))
 
 (defmethod to-sql
   clojure.lang.PersistentArrayMap
@@ -62,6 +52,20 @@
   java.lang.Long
   [acc opts node]
   (conj acc (str node)))
+
+
+(defn alpha-num? [s]
+  (some? (re-matches #"^[a-zA-Z][a-zA-Z0-9]*$" s)))
+
+(defn safe-identifier? [s]
+  (some? (re-matches #"^[_a-zA-Z][_.a-zA-Z0-9]*$" s)))
+
+(defn escape-ident [keywords node]
+  (let [norm-name (str/upper-case (name node))]
+    (if (or (not (safe-identifier? norm-name))
+            (contains? keywords (keyword norm-name)))
+      (str "\"" (name node) "\"")
+      (name node))))
 
 (defmethod to-sql
   clojure.lang.Keyword
@@ -74,3 +78,16 @@
   (conj acc (string-litteral node)))
 
 
+
+(defn format [opts node]
+  (let [sql-vec (to-sql [] opts node)]
+    (assert (sequential? sql-vec) (pr-str sql-vec))
+    (loop [[x & xs] sql-vec
+           sql-str []
+           params []]
+      (let [[sql-str params] (if (vector? x)
+                               [(conj sql-str (first x)) (conj params (second x))]
+                               [(conj sql-str x) params])]
+        (if (empty? xs)
+          (into [(str/join " " sql-str)] params)
+          (recur xs sql-str params))))))

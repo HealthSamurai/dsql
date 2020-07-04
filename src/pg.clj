@@ -119,8 +119,8 @@
        (ql/reduce-separated "," acc
                              (fn [acc [k node]]
                                (-> acc
-                                    (ql/to-sql opts node)
-                                    (conj "as" (name k)))))))
+                                   (ql/to-sql opts node)
+                                   (conj "as" (ql/escape-ident opts k)))))))
 
 (defmethod ql/to-sql
   :pg/sql
@@ -139,8 +139,7 @@
               (ql/to-sql opts v))))))
 
 
-(defmethod ql/to-sql
-  :pg/select
+(defn pg-select
   [acc opts data]
   (->> keys-for-select
        (ql/reduce-acc
@@ -151,6 +150,20 @@
                 (conj (str/upper-case (str/replace (name k) #"-" " ")))
                 (ql/to-sql opts (ql/default-type sub-node default-type)))
             acc)))))
+
+(defmethod ql/to-sql
+  :pg/select
+  [acc opts data]
+  (pg-select acc opts data))
+
+(defmethod ql/to-sql
+  :pg/sub-select
+  [acc opts data]
+  (-> acc
+      (conj "(")
+      (pg-select opts data)
+      (conj ")")))
+
 
 (defmethod ql/to-sql
   :pg/op
@@ -233,12 +246,78 @@
   (conj acc (str "'{" (to-array-list arr) "}'")))
 
 (defmethod ql/to-sql
+  :pg/kfn
+  [acc opts [f arg & args]]
+  (let [acc (-> (conj acc (str (name f) "("))
+                (ql/to-sql opts arg))]
+    (->
+     (loop [[k v & kvs] args
+            acc acc]
+       (let [acc (-> acc (conj (name k))
+                     (ql/to-sql opts v))]
+         (if (empty? kvs)
+           acc
+           (recur kvs acc))))
+     (conj ")"))))
+
+(defmethod ql/to-sql
   :pg/array-param
   [acc opts [_ tp arr]]
   (println "tp" tp arr)
   (conj acc
         [(str "?::" (name tp) "[]")
          (str "{" (to-array-list arr) "}")]))
+
+(defn acc-identity [acc & _]
+  acc)
+
+(defn identifier [acc opts id]
+  (conj acc (ql/escape-ident (:keywords opts) id)))
+
+(def index-keys
+  [[:unique acc-identity]
+   [:index identifier]
+   [:if-not-exists acc-identity]
+   [:on identifier]
+   [:on-only identifier]
+   [:using]
+   [:expr :pg/index-expr]
+   [:with :pg/index-with]
+   [:tablespace identifier]
+   [:where :pg/predicate]])
+
+(defmethod ql/to-sql
+  :pg/index-expr
+  [acc opts node]
+  (-> acc
+      (conj "(")
+      (conj "EXPR???")
+      (conj ")")))
+
+(defmethod ql/to-sql
+  :pg/index-with
+  [acc opts node]
+  (-> acc
+      (conj "(")
+      (conj "WITH???")
+      (conj ")")))
+
+(defmethod ql/to-sql
+  :pg/index
+  [acc opts node]
+  (->> index-keys
+       (ql/reduce-acc (conj acc "CREATE")
+                      (fn [acc [k h]]
+                        (if-let [sub-node (get node k)]
+                          (let [acc (if-not (= k :expr)
+                                      (conj acc (str/upper-case (str/replace (name k) "-" " ")))
+                                      acc)
+                                acc (cond (nil? h)     (ql/to-sql acc opts sub-node)
+                                          (keyword? h) (ql/to-sql acc opts (ql/default-type sub-node h))
+                                          (fn? h)      (h acc opts sub-node)
+                                          :else        (ql/to-sql acc opts sub-node))]
+                            acc)
+                          acc)))))
 
 (defn resolve-type [x]
   (if-let [m (meta x)]
@@ -247,7 +326,10 @@
       (:pg/fn m) :pg/fn
       (:pg/obj m) :pg/obj
       (:pg/jsonb m) :pg/jsonb
+      (:pg/kfn m) :pg/kfn
+      (:pg/select m) :pg/select
+      (:pg/sub-select m) :pg/sub-select
       :else nil)))
 
 (defn format [node]
-  (ql/format {:resolve-type #'resolve-type} (ql/default-type node :pg/select)))
+  (ql/format {:resolve-type #'resolve-type :keywords keywords} (ql/default-type node :pg/select)))
