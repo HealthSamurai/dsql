@@ -1,5 +1,7 @@
 # dsql - datastructure query language
 
+Previous experiment - https://github.com/HealthSamurai/ql
+
 Composable and extendable version of honeysql, 
 implemented as pure functions.
 
