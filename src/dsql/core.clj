@@ -31,13 +31,12 @@
   (str/replace s #"'" "''"))
 
 (defn string-litteral [s]
-  (str "'" (escape-string s) "'"))
+  (str "'" (escape-string (if (keyword? s) (name s) s)) "'"))
 
 (defn default-type [node tp]
   (if (and (not (get-type node)) (map? node))
     (assoc node :ql/type tp)
     node))
-
 
 
 (defmulti to-sql (fn [_ opts node] (dispatch-sql opts node)))
@@ -81,6 +80,11 @@
   java.lang.String
   [acc opts node]
   (conj acc (string-litteral node)))
+
+(defmethod to-sql
+  nil
+  [acc _ _]
+  (conj acc "NULL"))
 
 
 

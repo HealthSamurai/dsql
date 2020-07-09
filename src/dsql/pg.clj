@@ -102,6 +102,8 @@
 (def keys-for-select
   [[:select :pg/projection]
    [:from :pg/from]
+   [:left-join :pg/join]
+   [:join :pg/join]
    [:where :pg/and]
    [:group-by :pg/group-by]
    [:having :pg/having]
@@ -121,6 +123,15 @@
                                (-> acc
                                    (ql/to-sql opts node)
                                    (conj "as" (ql/escape-ident opts k)))))))
+(defmethod ql/to-sql
+  :pg/group-by
+  [acc opts data]
+  (->> (dissoc data :ql/type)
+       (ql/reduce-separated "," acc
+                            (fn [acc [k node]]
+                              (-> acc
+                                  (conj (str "/*" (name k) "*/"))
+                                  (ql/to-sql opts node))))))
 
 (defmethod ql/to-sql
   :pg/sql
@@ -131,6 +142,7 @@
   :pg/and
   [acc opts data]
   (->> (dissoc data :ql/type)
+       (filter (fn [[k v]] (not (nil? v))))
        (ql/reduce-separated
         "AND" acc
         (fn [acc [k v]]
@@ -138,6 +150,26 @@
               (conj (str "/*" (name k) "*/"))
               (ql/to-sql opts v))))))
 
+(defmethod ql/to-sql
+  :pg/join
+  [acc opts data]
+  (->> (dissoc data :ql/type)
+       (filter (fn [[k v]] (not (nil? v))))
+       (ql/reduce-separated
+        "" acc
+        (fn [acc [k v]]
+          (-> acc
+              (conj (name (:table v)))
+              (conj (name k) "ON")
+              (ql/to-sql opts (ql/default-type (:on v) :pg/and)))))))
+
+(defmethod ql/to-sql
+  :pg/count*
+  [acc _ _]
+  (conj acc "count(*)"))
+
+(defn strip-nils [m]
+  (filterv (fn [[k v]] (not (nil? v))) m))
 
 (defn pg-select
   [acc opts data]
@@ -145,11 +177,13 @@
        (ql/reduce-acc
         acc
         (fn [acc [k default-type]]
-          (if-let [sub-node (get data k)]
-            (-> acc
-                (conj (str/upper-case (str/replace (name k) #"-" " ")))
-                (ql/to-sql opts (ql/default-type sub-node default-type)))
-            acc)))))
+          (let [sub-node (get data k)]
+            (if (and sub-node
+                     (not (and (map? sub-node) (empty? (strip-nils sub-node)))))
+              (-> acc
+                  (conj (str/upper-case (str/replace (name k) #"-" " ")))
+                  (ql/to-sql opts (ql/default-type sub-node default-type)))
+              acc))))))
 
 (defmethod ql/to-sql
   :pg/select
@@ -217,10 +251,37 @@
                   "," acc
                   (fn [acc [k sub-node]]
                     (-> acc
-                        (conj (name k))
+                        (conj (ql/string-litteral (name k)))
                         (conj ",")
                         (ql/to-sql opts sub-node)))))]
     (conj acc ")")))
+
+(defmethod ql/to-sql
+  :jsonb/array
+  [acc opts arr]
+  (let [acc (conj acc "jsonb_build_array(")
+        acc (->> arr
+                 (ql/reduce-separated
+                  "," acc
+                  (fn [acc sub-node]
+                    (-> acc
+                        (ql/to-sql opts sub-node)))))]
+    (conj acc ")")))
+
+(defmethod ql/to-sql
+  :jsonb/obj
+  [acc opts obj]
+  (let [acc (conj acc "jsonb_build_object(")
+        acc (->> (dissoc obj :ql/type) 
+                 (ql/reduce-separated
+                  "," acc
+                  (fn [acc [k sub-node]]
+                    (-> acc
+                        (conj (ql/string-litteral (name k)))
+                        (conj ",")
+                        (ql/to-sql opts sub-node)))))]
+    (conj acc ")")))
+
 
 (defn alpha-num? [s]
   (some? (re-matches #"^[a-zA-Z][a-zA-Z0-9]*$" s)))
@@ -232,18 +293,26 @@
 (defn- to-array-list [arr]
   (->> arr
        (mapv (fn [x]
-               (if (string? x)
-                 (if (alpha-num? x)
-                   x (str "\"" x "\""))
-                 (if (number? x)
-                   x
-                   (assert false (pr-str x))))))
+               (let [x (if (keyword? x) (name x) x)]
+                 (if (string? x)
+                   (if (alpha-num? x)
+                     x (str "\"" x "\""))
+                   (if (number? x)
+                     x
+                     (assert false (pr-str x)))))))
        (str/join ",")))
+
+
+(defn- to-array-value [arr]
+  (str "{" (to-array-list arr) "}"))
+
+(defn- to-array-litteral [arr]
+  (str "'" (to-array-value arr) "'"))
 
 (defmethod ql/to-sql
   :pg/array
   [acc opts [_ arr]]
-  (conj acc (str "'{" (to-array-list arr) "}'")))
+  (conj acc (to-array-litteral arr)))
 
 (defmethod ql/to-sql
   :pg/kfn
@@ -263,10 +332,9 @@
 (defmethod ql/to-sql
   :pg/array-param
   [acc opts [_ tp arr]]
-  (println "tp" tp arr)
   (conj acc
         [(str "?::" (name tp) "[]")
-         (str "{" (to-array-list arr) "}")]))
+         (to-array-value arr)]))
 
 (defn acc-identity [acc & _]
   acc)
@@ -284,7 +352,7 @@
    [:expr :pg/index-expr]
    [:with :pg/index-with]
    [:tablespace identifier]
-   [:where :pg/predicate]])
+   [:where :pg/and]])
 
 (defmethod ql/to-sql
   :pg/index-expr
@@ -342,11 +410,109 @@
       (:pg/op m) :pg/op
       (:pg/fn m) :pg/fn
       (:pg/obj m) :pg/obj
+      (:jsonb/obj m) :jsonb/obj
+      (:jsonb/array m) :jsonb/array
       (:pg/jsonb m) :pg/jsonb
       (:pg/kfn m) :pg/kfn
       (:pg/select m) :pg/select
       (:pg/sub-select m) :pg/sub-select
       :else nil)))
 
+(defmethod ql/to-sql
+  :jsonb/->
+  [acc opts [_ col k]]
+  (-> acc
+      (ql/to-sql opts col)
+      (conj "->")
+      (conj (ql/string-litteral k))))
+
+(defmethod ql/to-sql
+  :jsonb/->>
+  [acc opts [_ col k]]
+  (-> acc
+      (ql/to-sql opts col)
+      (conj "->>")
+      (conj (ql/string-litteral k))))
+
+(defmethod ql/to-sql
+  :jsonb/#>
+  [acc opts [_ col path]]
+  (-> acc
+      (ql/to-sql opts col)
+      (conj "#>")
+      (conj (to-array-litteral path))))
+
+(defmethod ql/to-sql
+  :jsonb/#>>
+  [acc opts [_ col path]]
+  (-> acc
+      (ql/to-sql opts col)
+      (conj "#>>")
+      (conj (to-array-litteral path))))
+
 (defn format [node]
   (ql/format {:resolve-type #'resolve-type :keywords keywords} (ql/default-type node :pg/select)))
+
+(def keys-for-update
+  [[:set :pg/set]
+   [:where :pg/and]])
+
+(defn pg-update
+  [acc opts data]
+  (let [acc (conj acc "UPDATE")
+        acc (conj acc (name (:update data)))]
+    (->> keys-for-update
+        (ql/reduce-acc
+         acc
+         (fn [acc [k default-type]]
+           (let [sub-node (get data k)]
+             (if (and sub-node
+                      (not (and (map? sub-node) (empty? (strip-nils sub-node)))))
+               (-> acc
+                   (conj (str/upper-case (str/replace (name k) #"-" " ")))
+                   (ql/to-sql opts (ql/default-type sub-node default-type)))
+               acc)))))))
+
+(defmethod ql/to-sql
+  :pg/update
+  [acc opts data]
+  (pg-update acc opts data))
+
+(defmethod ql/to-sql
+  :pg/set
+  [acc opts data]
+  (->> (dissoc data :ql/type)
+       (ql/reduce-separated "," acc
+                            (fn [acc [k node]]
+                              (-> acc
+                                  (conj (ql/escape-ident opts k) "=")
+                                  (ql/to-sql opts node))))))
+
+(def keys-for-delete
+  [[:from :pg/from]
+   [:where :pg/and]])
+
+(defn pg-delete
+  [acc opts data]
+  (let [acc (conj acc "DELETE")]
+    (->> keys-for-select
+        (ql/reduce-acc
+         acc
+         (fn [acc [k default-type]]
+           (let [sub-node (get data k)]
+             (if (and sub-node
+                      (not (and (map? sub-node) (empty? (strip-nils sub-node)))))
+               (-> acc
+                   (conj (str/upper-case (str/replace (name k) #"-" " ")))
+                   (ql/to-sql opts (ql/default-type sub-node default-type)))
+               acc)))))))
+
+(defmethod ql/to-sql
+  :pg/delete
+  [acc opts data]
+  (pg-delete acc opts data))
+
+(defmethod ql/to-sql
+  :resource->
+  [acc opts [_ k]]
+  (conj acc (str "resource->" (ql/string-litteral (name k)))))
