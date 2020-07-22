@@ -1,7 +1,8 @@
 (ns dsql.pg
   (:require [dsql.core :as ql]
             [cheshire.core]
-            [clojure.string :as str]))
+            [clojure.string :as str])
+  (:refer-clojure :exclude [format]))
 
 (def keywords
   #{:A :ABORT :ABS :ABSENT :ABSOLUTE :ACCESS :ACCORDING :ACOS
@@ -149,6 +150,34 @@
           (-> acc
               (conj (str "/*" (name k) "*/"))
               (ql/to-sql opts v))))))
+(defmethod ql/to-sql
+  :pg/or
+  [acc opts data]
+  (-> acc
+      (conj "(")
+      (into (->> (dissoc data :ql/type)
+                 (filter (fn [[k v]] (not (nil? v))))
+                 (ql/reduce-separated
+                   "OR" []
+                   (fn [acc [k v]]
+                     (-> acc
+                         (conj (str "/*" (name k) "*/"))
+                         (ql/to-sql opts v))))))
+      (conj ")")))
+
+
+
+(defmethod ql/to-sql
+  :or
+  [acc opts [_ & data]]
+  (let [acc (conj acc "(")]
+    (-> (->> data
+          (filter (fn [v] (not (nil? v))))
+          (ql/reduce-separated
+           "OR" acc
+           (fn [acc v]
+             (-> acc (ql/to-sql opts v)))))
+        (conj ")"))))
 
 (defmethod ql/to-sql
   :pg/join
@@ -516,3 +545,133 @@
   :resource->
   [acc opts [_ k]]
   (conj acc (str "resource->" (ql/string-litteral (name k)))))
+
+(defmethod ql/to-sql
+  :resource->
+  [acc opts [_ k]]
+  (conj acc (str "resource->" (ql/string-litteral (name k)))))
+
+(defmethod ql/to-sql
+  :resource->>
+  [acc opts [_ k]]
+  (conj acc (str "resource->>" (ql/string-litteral (name k)))))
+
+(defmethod ql/to-sql
+  :resource#>
+  [acc opts [_ path]]
+  (conj acc (str "resource#>" (to-array-litteral path))))
+
+(defmethod ql/to-sql
+  :resource#>>
+  [acc opts [_ path]]
+  (conj acc (str "resource#>>" (to-array-litteral path))))
+
+
+(defmethod ql/to-sql
+  :is
+  [acc opts [_ l r]]
+  (-> acc
+      (ql/to-sql opts l)
+      (conj "IS")
+      (ql/to-sql opts r)))
+
+(defmethod ql/to-sql
+  :is-not
+  [acc opts [_ l r]]
+  (-> acc
+      (ql/to-sql opts l)
+      (conj "IS NOT")
+      (ql/to-sql opts r)))
+
+(defmethod ql/to-sql
+  :ilike
+  [acc opts [_ l r]]
+  (-> acc
+      (ql/to-sql opts l)
+      (conj "ILIKE")
+      (ql/to-sql opts r)))
+
+(defmethod ql/to-sql
+  :in
+  [acc opts [_ l r]]
+  (-> acc
+      (ql/to-sql opts l)
+      (conj "IN")
+      (ql/to-sql opts r)))
+
+(defmethod ql/to-sql
+  :not-in
+  [acc opts [_ l r]]
+  (-> acc
+      (ql/to-sql opts l)
+      (conj "NOT IN")
+      (ql/to-sql opts r)))
+
+
+(defmethod ql/to-sql
+  :pg/params-list
+  [acc opts [_ params]]
+  (let [acc (conj acc "(")]
+    (->
+     (->> params
+          (ql/reduce-separated "," acc
+                               (fn [acc p]
+                                 (println "*" p)
+                                 (conj acc ["?" p]))))
+     (conj  ")"))))
+
+(defmethod ql/to-sql
+  :not
+  [acc opts [_ expr]]
+  (-> acc
+      (conj "NOT")
+      (ql/to-sql opts expr)))
+
+
+
+(defmethod ql/to-sql
+  :pg/include-op
+  [acc opts [_ l r]]
+  (-> acc
+      (ql/to-sql opts l)
+      (conj "@>")
+      (ql/to-sql opts r)))
+
+(defmethod ql/to-sql
+  :pg/coalesce
+  [acc opts [_ l r]]
+  (-> acc
+      (conj "COALESCE(")
+      (ql/to-sql opts l)
+      (conj ",")
+      (ql/to-sql opts r)
+      (conj ")")))
+
+(defmethod ql/to-sql
+  :=
+  [acc opts [_ l r]]
+  (-> acc
+      (ql/to-sql opts l)
+      (conj "=")
+      (ql/to-sql opts r)))
+
+(defmethod ql/to-sql
+  :pg/cast
+  [acc opts [_ expr tp]]
+  (-> acc
+      (conj "(")
+      (ql/to-sql opts expr)
+      (conj (str ")::" (name tp)))))
+
+(defmethod ql/to-sql
+  :jsonb/array_elements_text
+  [acc opts [_ expr]]
+  (-> acc
+      (conj "jsonb_array_elements(")
+      (ql/to-sql opts expr)
+      (conj ")")))
+
+(defmethod ql/to-sql
+  :count*
+  [acc opts [_ expr]]
+  (conj acc "count(*)"))

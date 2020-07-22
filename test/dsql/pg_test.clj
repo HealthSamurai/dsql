@@ -21,9 +21,7 @@
     (format=
      {:ql/type :pg/projection
       :sub-q ^:pg/sub-select{:select :* :from :tbl :limit 1}}
-     ["( SELECT * FROM tbl LIMIT 1 ) as \"sub-q\""])
-
-    )
+     ["( SELECT * FROM tbl LIMIT 1 ) as \"sub-q\""]))
 
   (format=
    {:select :*
@@ -52,6 +50,14 @@
      :by-id ^:pg/op[:= :id [:pg/param "u-1"]]}
     {:by-status ^:pg/op[:= :status "active"]})
    ["/*by-id*/ id = ? AND /*by-status*/ status = 'active'" "u-1"])
+
+  (format=
+   (merge
+    {:ql/type :pg/or
+     :by-id ^:pg/op[:= :id [:pg/param "u-1"]]}
+    {:by-status ^:pg/op[:= :status "active"]})
+   ["( /*by-id*/ id = ? OR /*by-status*/ status = 'active' )" "u-1"])
+
 
   (format=
    {:ql/type :pg/projection
@@ -116,8 +122,7 @@
     :where ^:pg/op[:= :user.status "active"]}
 
 
-   ["CREATE INDEX users_id_idx IF NOT EXISTS ON users USING GIN ( EXPR??? ) WITH ( fillfactor = 70 ) TABLESPACE mytbs WHERE user.status = 'active'"]
-   )
+   ["CREATE INDEX users_id_idx IF NOT EXISTS ON users USING GIN ( EXPR??? ) WITH ( fillfactor = 70 ) TABLESPACE mytbs WHERE user.status = 'active'"])
 
   (format= nil ["NULL"])
 
@@ -126,6 +131,12 @@
 
   (format= [:resource-> :name]
            ["resource->'name'"])
+
+  (format= [:is [:resource-> :name] nil]
+           ["resource->'name' IS NULL"])
+
+  (format= [:is-not [:resource-> :name] nil]
+           ["resource->'name' IS NOT NULL"])
 
   (format= ^:pg/op[:|| :col [:pg/param "string"]]
            ["col || ?" "string"])
@@ -175,5 +186,46 @@
     :where {:no-scan ^:pg/op[:is :d.id nil]}}
 
    ["SELECT count(*) as count FROM dft LEFT JOIN document d ON /*by-id*/ dft.id = d.resource ->> 'caseNumber' AND /*front*/ d.resource ->> 'name' = 'front' WHERE /*no-scan*/ d.id is NULL"])
+
+
+  (format= [:pg/params-list [1 2 3]]
+           ["( ? , ? , ? )" 1 2 3])
+
+
+  (format= [:in :column [:pg/params-list [1 2 3]]]
+           ["column IN ( ? , ? , ? )" 1 2 3])
+
+  (format= [:not-in :column [:pg/params-list [1 2 3]]]
+           ["column NOT IN ( ? , ? , ? )" 1 2 3])
+
+  (format= [:not [:pg/include-op [:resource->> :tags]
+                  (into ^:jsonb/array[] ["a" "b" "c"])]]
+
+           ["NOT resource->>'tags' @> jsonb_build_array( 'a' , 'b' , 'c' )"])
+
+  (format= [:or
+            [:ilike [:pg/sql "resource::text"] [:pg/param "%a%"]]
+            [:ilike :id [:pg/param "%a%"]]]
+           ["( resource::text ILIKE ? OR id ILIKE ? )" "%a%" "%a%"])
+
+  (format=
+   [:pg/coalesce [:resource->> :primary_payer] "MISSED"]
+   ["COALESCE( resource->>'primary_payer' , 'MISSED' )"])
+
+  (format=
+   [:pg/cast [:resource->> :date] ::date]
+   ["( resource->>'date' )::date"])
+
+  (format=
+   [:jsonb/array_elements_text [:resource-> :tags]]
+   ["jsonb_array_elements( resource->'tags' )"])
+
+  (format=
+   [:count*]
+   ["count(*)"])
+
+  (format=
+   [:= 1 1]
+   ["1 = 1"])
 
 )
