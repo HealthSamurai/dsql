@@ -57,3 +57,7 @@ Function `format` call recursive to-sql and join acc string extracting params
 ;;=> SELECT function('arg', (select * from user limit 1))  
 
 ```
+
+## More
+
+* See intro seminar in Russian - https://storage.googleapis.com/samurai-files/honey-ql-seminar.mp4
