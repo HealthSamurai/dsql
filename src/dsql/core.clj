@@ -38,6 +38,13 @@
     (assoc node :ql/type tp)
     node))
 
+(defn default-meta-type [node tp]
+  (if (or (get-type node)
+          (not (instance? clojure.lang.IMeta node)))
+    node
+    (with-meta node
+               (merge {:ql/type tp}
+                      (meta node)))))
 
 (defmulti to-sql (fn [_ opts node] (dispatch-sql opts node)))
 
