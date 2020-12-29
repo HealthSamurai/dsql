@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/HealthSamurai/dsql.svg?branch=master)](https://travis-ci.org/HealthSamurai/dsql)
 # dsql - datastructure query language
 
 Previous experiment - https://github.com/HealthSamurai/ql
