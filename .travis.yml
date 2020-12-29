@@ -1,0 +1,12 @@
+sudo: true
+language: java
+script: make tests
+install:
+  - curl -O https://download.clojure.org/install/linux-install-1.10.1.763.sh
+  - chmod +x linux-install-1.10.1.763.sh
+  - sudo ./linux-install-1.10.1.763.sh
+jdk:
+  - openjdk11
+cache:
+  directories:
+    - $HOME/.m2

@@ -14,5 +14,13 @@
                 cheshire                      {:mvn/version "5.6.3"}
                 org.postgresql/postgresql     {:mvn/version "9.4.1211.jre7"}
                 honeysql                      {:mvn/version "1.0.444"}}
-
-   :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]}}}
+   :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]}
+  :test-clj {:extra-paths ["test"]
+             :extra-deps {com.cognitect/test-runner {:git/url "https://github.com/cognitect-labs/test-runner.git"
+                                                     :sha "209b64504cb3bd3b99ecfec7937b358a879f55c1"}
+                          matcho                        {:mvn/version "0.1.0-RC6"}
+                          org.clojure/java.jdbc         {:mvn/version "0.6.1"}
+                          cheshire                      {:mvn/version "5.6.3"}
+                          org.postgresql/postgresql     {:mvn/version "9.4.1211.jre7"}
+                          honeysql                      {:mvn/version "1.0.444"}}
+             :main-opts ["-m" "cognitect.test-runner"]}}}
