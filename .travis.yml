@@ -5,4 +5,4 @@ install:
 - chmod +x linux-install-1.10.1.469.sh
 - sudo ./linux-install-1.10.1.469.sh
 - rm linux-install-1.10.1.469.sh
-script: make test
+script: bash -c 'make test'

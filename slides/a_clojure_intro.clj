@@ -1,46 +1,86 @@
-(ns a-clojure-intro)
+(ns a-clojure-intro
+  (:require [b-clojure-db]))
 
-;; S-EXPRESSION and functions
+"Clojure is functional lisp hosted on jvm and js"
 
-;; c like functions to lisp:
-;; myfn(arg, arg, arg) => (myfn arg arg arg)
-;; function call
+"Clojure is your dynamic language --"
 
+"
+- syntax (lisp)
+- mutability (pesistent datastructures)
+- objects/classes (generic data)
+"
+
+"
+Reading LISP: S-EXPRESSION
+
+(OP ARG, ARG)
+"
+
+"In c like lang you call function:
+subs('string',1,4)
+"
+(subs "string" 1 4)
+
+"
+operators:
+1 + 2 => + 1 2 => (+ 1 2)
+"
 (+ 1 2 3 4)
 
-(str "a" "b" "c")
+"
+ // statements
+ var x = 2;
+ if ( x = 1 ) { return 'match' } else { return 'nop' }
+"
+(let [x 2]
+  (if (= x 1) "match" "nop"))
 
-;; clj is hosted language
-;; uses host primitives primitives
+"
+//fn definition
+
+function myfn(a, b) { return a + b }
+
+"
+(defn myfn [a b] (+ a b))
+
+(myfn 1 3)
+
+
+"
+ clj is hosted language
+ uses host primitives primitives
+"
 
 (type 1)
-;;=>java.lang.Long
 
 (type 1.1)
-;; => java.lang.Double
 
 (type true)
-;; java.lang.Boolean
-
 
 (type "str")
-;; java.lang.String
 
-;; SPECIAL STRINGS
-;; special string to be a key in a map
+"
+SPECIAL STRINGS - keys and symbols
+"
+
+"Keyword is a string to be a key in a map"
 (type :mykey)
-;;=> clojure.lang.Keyword
 
-;; special string to name functions and other objects
+"Symbol is a string to be name of function"
 (type 'symbol)
-;;=> clojure.lang.Symbol
 
 
-;; datastructures
+"
+Datastructures:
+* vector
+* hash-map
+* set
+* list
+"
 
-;; vector
-
-(def v [1 2 3 4])
+" Vector:"
+(def v [1 2, 3 4])
 
 (nth v 3)
 
@@ -50,17 +90,21 @@
 
 (butlast v)
 
-;; hash-map
+"Lisp list for code"
 
-(def m {:a 1 :b "2"})
+(def l (or '(1 2 3) (list 1 2 3)))
 
-(assoc m :c 3)
+(nth l 2)
 
-(dissoc m :b)
+(conj l 4)
 
-(merge m {:c 3 :d 4})
+(rest l)
 
-;; sets
+(list '+ 1 2)
+
+(eval (list '+ 1 2))
+
+"sets"
 
 (def s #{1 2 3})
 
@@ -70,41 +114,38 @@
 
 (disj s 3)
 
-;; lists
 
-(def l '(1 2 3))
+"hash-map: dict, object "
 
-(nth l 2)
+(def m
+  {:a 1 :b "2"})
 
-(conj l 4)
+(assoc m :c 3)
 
-(rest l)
+(dissoc m :b)
 
-;; all structures are immutable
-;; immutability is cheap!!!
+(merge m {:c 3 :d 4})
 
-(def m {:a 1 :b "2"})
+
+"immutability: copy semantic, but efficient and cheap"
 
 (assoc m :c 3)
 
 m
 
-;; function definition
-;; function myfn (x, y, z) { return str(x, y, z); }
+"It is better to have 100 functions operate on one data structure
+ than to have 10 functions operate on 10 data structures.
 
-(defn myfn [x y z] ;;< args vector
-  (str x y z))
+from Alan Perlis' Epigrams on Programming (1982)"
 
-;; function application
-
-(myfn 1 2 3)
-
-
-;; 1 datastructure + 100 functions
+"Clojure: 4 datastructures & ~500 functions & ~100 macro"
 
 (->> (range 100)
      (filter odd?)
      (take 20))
+
+;; macroexpand
+(take 20 (filter odd? (range 100)))
 
 (-> {:name {:given "x"}
      :age 40}
@@ -113,51 +154,51 @@ m
     (update-in [:name :given] str "_postfix"))
 
 
-;; REPL ns & vars; reload
+"REPL: ns & vars"
 
-;; Clojure app consists of namespaces and vars
-
-;; (ns myns)
-
-
+"this is macro"
 (defn somevar [x]
   (str "Hello " x))
 
+"=>"
 (def somevar (fn [x] (str "Hello " x)))
+
+"somevar is var - mutable var which refers immutable value"
+(type #'somevar)
+(var-get #'somevar)
 
 (somevar "Ivan")
 
-;; redefine fuction
+"lets redefine and reload function"
 (defn somevar [x]
   (str "Привет " x))
 
 (somevar "Ivan")
 
-(type #'somevar)
-
-(var-get #'somevar)
+"if fn referenced in other fn it will be reloaded"
 
 (defn other-fn [x]
   (str (somevar x) "!"))
 
 (other-fn "Ivan")
 
-(defn somevar [x]
-  (str "Hello " x))
+"redefine"
+(defn somevar [x] (str "Hello " x))
 
 (other-fn "Ivan")
 
-(defn somevar [x]
-  (str "Привет " x))
 
-;; code is just a data
+" Macro:
+  code is just a data
+"
 (->> '(defn somevar [x] (str "Привет " x))
-     (map (fn [x] (println "*" x "-" (type x)))))
+     (map (fn [x] (str "*" x " : " (type x)))))
 
 (conj '(somevar  [x] (str "Привет " x)) 'defn)
 
-;; emacs -> send code -> nrepl -> response
+"
+In emacs
+  emacs -> send code -> nrepl server -> execute -> response
+"
 
-;; multimethod & polymorphism
-
-
+ b-clojure-db/start
