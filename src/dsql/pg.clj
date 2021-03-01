@@ -101,9 +101,11 @@
 ;; [ FOR { UPDATE | NO KEY UPDATE | SHARE | KEY SHARE } [ OF имя_таблицы [, ...] ] [ NOWAIT | SKIP LOCKED ] [...] ]
 
 (def keys-for-select
-  [[:select :pg/projection]
+  [[:explain :pg/explain]
+   [:select :pg/projection]
    [:from :pg/from]
-   [:left-join :pg/join]
+   [:left-join-lateral :pg/join-lateral]
+   [:left-join :pg/left-join]
    [:join :pg/join]
    [:where :pg/and]
    [:group-by :pg/group-by]
@@ -118,12 +120,35 @@
 (defmethod ql/to-sql
   :pg/projection
   [acc opts data]
-  (->> (dissoc data :ql/type)
+  (if (vector? data)
+    (->> (rest data)
+         (ql/reduce-separated "," acc
+                              (fn [acc node]
+                                (ql/to-sql acc opts node))))
+    (->> (dissoc data :ql/type)
+         (sort-by first)
+         (ql/reduce-separated "," acc
+                              (fn [acc [k node]]
+                                (-> acc
+                                    (ql/to-sql opts node)
+                                    (conj "as" (ql/escape-ident opts k))))))))
+
+(defmethod ql/to-sql
+  :pg/list
+  [acc opts data]
+  (assert (vector? data) "expected vector")
+  (->> (rest data)
        (ql/reduce-separated "," acc
-                             (fn [acc [k node]]
-                               (-> acc
-                                   (ql/to-sql opts node)
-                                   (conj "as" (ql/escape-ident opts k)))))))
+                            (fn [acc node]
+                              (ql/to-sql acc opts node)))))
+
+
+(defmethod ql/to-sql
+  :pg/explain
+  [acc opts data]
+  (cond->  acc
+    (:analyze data) (conj "ANALYZE")))
+
 (defmethod ql/to-sql
   :pg/group-by
   [acc opts data]
@@ -165,8 +190,6 @@
                          (ql/to-sql opts v))))))
       (conj ")")))
 
-
-
 (defmethod ql/to-sql
   :or
   [acc opts [_ & data]]
@@ -180,15 +203,69 @@
         (conj ")"))))
 
 (defmethod ql/to-sql
+  :and
+  [acc opts [_ & data]]
+  (let [acc (conj acc "(")]
+    (-> (->> data
+             (filter (fn [v] (not (nil? v))))
+             (ql/reduce-separated
+              "AND" acc
+              (fn [acc v]
+                (-> acc (ql/to-sql opts v)))))
+        (conj ")"))))
+
+(defmethod ql/to-sql
+  :||
+  [acc opts [_ lhs rhs]]
+  (-> acc
+      (conj "(")
+      (ql/to-sql opts lhs)
+      (conj ")")
+      (conj "||")
+      (conj "(")
+      (ql/to-sql opts rhs)
+      (conj ")")
+      ))
+
+
+(defmethod ql/to-sql
+  :pg/left-join
+  [acc opts data]
+  (->> (dissoc data :ql/type)
+       (filter (fn [[k v]] (not (nil? v))))
+       (ql/reduce-separated
+        "LEFT JOIN" acc
+        (fn [acc [k v]]
+          (-> acc
+              (conj (name (:table v)))
+              (conj (name k) "ON")
+              (ql/to-sql opts (ql/default-type (:on v) :pg/and)))))))
+
+(defmethod ql/to-sql
   :pg/join
   [acc opts data]
   (->> (dissoc data :ql/type)
        (filter (fn [[k v]] (not (nil? v))))
        (ql/reduce-separated
-        "" acc
+        "JOIN" acc
         (fn [acc [k v]]
           (-> acc
               (conj (name (:table v)))
+              (conj (name k) "ON")
+              (ql/to-sql opts (ql/default-type (:on v) :pg/and)))))))
+
+(defmethod ql/to-sql
+  :pg/join-lateral
+  [acc opts data]
+  (->> (dissoc data :ql/type)
+       (filter (fn [[k v]] (not (nil? v))))
+       (ql/reduce-separated
+        "LEFT JOIN LATERAL" acc
+        (fn [acc [k v]]
+          (-> acc
+              (conj "(")
+              (ql/to-sql opts (:sql v))
+              (conj ")")
               (conj (name k) "ON")
               (ql/to-sql opts (ql/default-type (:on v) :pg/and)))))))
 
@@ -269,7 +346,9 @@
 (defmethod ql/to-sql
   :pg/jsonb
   [acc opts v]
-  (conj acc (ql/string-litteral (cheshire.core/generate-string v))))
+  (if (= :pg/jsonb (first v))
+    (conj acc (ql/string-litteral (cheshire.core/generate-string (second v))))
+    (conj acc (ql/string-litteral (cheshire.core/generate-string v)))))
 
 (defmethod ql/to-sql
   :pg/obj
@@ -371,17 +450,6 @@
 (defn identifier [acc opts id]
   (conj acc (ql/escape-ident (:keywords opts) id)))
 
-(def index-keys
-  [[:unique acc-identity]
-   [:index identifier]
-   [:if-not-exists acc-identity]
-   [:on identifier]
-   [:on-only identifier]
-   [:using]
-   [:expr :pg/index-expr]
-   [:with :pg/index-with]
-   [:tablespace identifier]
-   [:where :pg/and]])
 
 (defmethod ql/to-sql
   :pg/index-expr
@@ -405,33 +473,44 @@
                      (conj "=")
                      (ql/to-sql opts node))))))))
 
-(defmethod ql/to-sql
-  :pg/projection
-  [acc opts data]
-  (->> (dissoc data :ql/type)
-       (ql/reduce-separated "," acc
-                            (fn [acc [k node]]
-                              (-> acc
-                                  (ql/to-sql opts node)
-                                  (conj "as" (ql/escape-ident opts k)))))))
 
+(def index-keys
+  [[:unique acc-identity]
+   [:index identifier]
+   [:if-not-exists acc-identity]
+   [:on identifier]
+   [:on-only identifier]
+   [:using]
+   [:expr :pg/index-expr]
+   [:with :pg/index-with]
+   [:tablespace identifier]
+   [:where :pg/and]])
 
 (defmethod ql/to-sql
   :pg/index
-  [acc opts node]
-  (->> index-keys
-       (ql/reduce-acc (conj acc "CREATE")
-                      (fn [acc [k h]]
-                        (if-let [sub-node (get node k)]
-                          (let [acc (if-not (= k :expr)
-                                      (conj acc (str/upper-case (str/replace (name k) "-" " ")))
-                                      acc)
-                                acc (cond (nil? h)     (ql/to-sql acc opts sub-node)
-                                          (keyword? h) (ql/to-sql acc opts (ql/default-type sub-node h))
-                                          (fn? h)      (h acc opts sub-node)
-                                          :else        (ql/to-sql acc opts sub-node))]
-                            acc)
-                          acc)))))
+  [acc opts {idx :index tbl :on using :using expr :expr ops :ops where :where :as node}]
+  (when-not (and idx tbl expr)
+    (throw (Exception. (str ":index :on :expr are required! Got " (pr-str node)))))
+  (-> acc
+      (conj "CREATE INDEX")
+      (conj "IF NOT EXISTS")
+      (conj (name idx))
+      (conj "ON")
+      (conj (name tbl))
+      (cond-> using (conj (str "USING " (name using))))
+      (conj "(")
+      (ql/reduce-separated2 ","
+                            (fn [acc exp]
+                              (-> acc
+                                  (conj "(")
+                                  (ql/to-sql opts exp)
+                                  (conj ")"))) expr)
+      (cond-> ops (conj (name ops)))
+      (conj ")")
+      (cond-> where
+        (->
+         (conj "WHERE")
+         (ql/to-sql opts where)))))
 
 (defn resolve-type [x]
   (if-let [m (meta x)]
@@ -479,17 +558,41 @@
       (conj "#>>")
       (conj (to-array-litteral path))))
 
+(defmethod ql/to-sql
+  :jsonb/#>*
+  [acc opts [_ col path]]
+  (-> acc
+      (ql/to-sql opts col)
+      (conj "#> (")
+      (ql/to-sql opts path)
+      (conj ")")))
+
+(defmethod ql/to-sql
+  :jsonb/#>>*
+  [acc opts [_ col path]]
+  (-> acc
+      (ql/to-sql opts col)
+      (conj "#>> (")
+      (ql/to-sql opts path)
+      (conj ")")))
+
 (defn format [node]
   (ql/format {:resolve-type #'resolve-type :keywords keywords} (ql/default-type node :pg/select)))
 
 (def keys-for-update
   [[:set :pg/set]
-   [:where :pg/and]])
+   [:from :pg/from]
+   [:left-join-lateral :pg/join-lateral]
+   [:where :pg/and]
+   [:returning]])
 
 (defn pg-update
   [acc opts data]
+  (assert (:update data) "Key :update is required!")
   (let [acc (conj acc "UPDATE")
-        acc (conj acc (name (:update data)))]
+        acc (conj acc (if (map? (:update data))
+                        (str/join " " (reverse (map name (first (:update data)))))
+                        (name (:update data))))]
     (->> keys-for-update
         (ql/reduce-acc
          acc
@@ -519,12 +622,13 @@
 
 (def keys-for-delete
   [[:from :pg/from]
-   [:where :pg/and]])
+   [:where :pg/and]
+   [:returning]])
 
 (defn pg-delete
   [acc opts data]
   (let [acc (conj acc "DELETE")]
-    (->> keys-for-select
+    (->> keys-for-delete
         (ql/reduce-acc
          acc
          (fn [acc [k default-type]]
@@ -566,7 +670,6 @@
   [acc opts [_ path]]
   (conj acc (str "resource#>>" (to-array-litteral path))))
 
-
 (defmethod ql/to-sql
   :is
   [acc opts [_ l r]]
@@ -592,6 +695,14 @@
       (ql/to-sql opts r)))
 
 (defmethod ql/to-sql
+  :similar-to
+  [acc opts [_ l r]]
+  (-> acc
+      (ql/to-sql opts l)
+      (conj "SIMILAR TO")
+      (ql/to-sql opts r)))
+
+(defmethod ql/to-sql
   :in
   [acc opts [_ l r]]
   (-> acc
@@ -607,6 +718,13 @@
       (conj "NOT IN")
       (ql/to-sql opts r)))
 
+(defmethod ql/to-sql
+  :pg/with-ordinality
+  [acc opts [_ x]]
+  (-> acc
+      (ql/to-sql opts x)
+      (conj "WITH ORDINALITY")))
+
 
 (defmethod ql/to-sql
   :pg/params-list
@@ -616,7 +734,6 @@
      (->> params
           (ql/reduce-separated "," acc
                                (fn [acc p]
-                                 (println "*" p)
                                  (conj acc ["?" p]))))
      (conj  ")"))))
 
@@ -627,7 +744,13 @@
       (conj "NOT")
       (ql/to-sql opts expr)))
 
-
+(defmethod ql/to-sql
+  :not-with-parens
+  [acc opts [_ expr]]
+  (-> acc
+      (conj "NOT (")
+      (ql/to-sql opts expr)
+      (conj ")")))
 
 (defmethod ql/to-sql
   :pg/include-op
@@ -639,12 +762,14 @@
 
 (defmethod ql/to-sql
   :pg/coalesce
-  [acc opts [_ l r]]
-  (-> acc
-      (conj "COALESCE(")
-      (ql/to-sql opts l)
-      (conj ",")
-      (ql/to-sql opts r)
+  [acc opts [_ & args]]
+  (-> (reduce
+        (fn [acc x]
+          (conj (ql/to-sql acc opts x) ","))
+        (conj acc "COALESCE(")
+        args)
+      (drop-last)
+      (vec)
       (conj ")")))
 
 (defmethod ql/to-sql
@@ -653,6 +778,14 @@
   (-> acc
       (ql/to-sql opts l)
       (conj "=")
+      (ql/to-sql opts r)))
+
+(defmethod ql/to-sql
+  :!=
+  [acc opts [_ l r]]
+  (-> acc
+      (ql/to-sql opts l)
+      (conj "!=")
       (ql/to-sql opts r)))
 
 (defmethod ql/to-sql
@@ -675,3 +808,329 @@
   :count*
   [acc opts [_ expr]]
   (conj acc "count(*)"))
+
+
+(defmethod ql/to-sql
+  :cond
+  [acc opts [_ & pairs]]
+  (into
+    acc
+    (concat
+      ["( case"]
+      (->> (partition-all 2 pairs)
+           (mapcat (fn [pair]
+                     (if (= 1 (count pair))
+                       (-> ["else ("]
+                           (ql/to-sql opts (first pair))
+                           (conj ")"))
+                       (-> ["when ("]
+                           (ql/to-sql opts (first pair))
+                           (conj ") then (")
+                           (ql/to-sql opts (second pair))
+                           (conj ")"))))))
+      ["end )"])))
+
+
+(defmethod ql/to-sql
+  :case
+  [acc opts [_ expression & pairs]]
+  (into
+    acc
+    (concat
+      (-> ["( case ("]
+          (ql/to-sql opts expression)
+          (conj ")"))
+      (->> (partition-all 2 pairs)
+           (mapcat (fn [pair]
+                     (if (= 1 (count pair))
+                       (-> ["else ("]
+                           (ql/to-sql opts (first pair))
+                           (conj ")"))
+                       (-> ["when ("]
+                           (ql/to-sql opts (first pair))
+                           (conj ") then (")
+                           (ql/to-sql opts (second pair))
+                           (conj ")"))))))
+      ["end )"])))
+
+(defmethod ql/to-sql
+  :pg/create-table
+  [acc opts {not-ex :if-not-exists tbl :table-name cols :columns}]
+  (-> acc
+      (conj "CREATE TABLE")
+      (cond-> not-ex (conj "IF NOT EXISTS"))
+      (conj (name tbl))
+      (conj "(")
+      (ql/reduce-separated2 ","
+                           (fn [acc [col-name col-def]]
+                             (-> acc
+                                 (conj (name col-name))
+                                 (conj (:type col-def))
+                                 (cond->
+                                     (:primary-key col-def) (conj "PRIMARY KEY")))
+                             ) cols)
+      (conj ")")))
+
+(defmethod ql/to-sql
+  :pg/insert-select
+  [acc opts {tbl :into {proj :select :as sel} :select}]
+  (-> acc
+      (conj "INSERT INTO")
+      (conj (name tbl))
+      (conj "(")
+      (conj (->> (keys proj) (sort) (mapv name)  (str/join ", ")))
+      (conj ")")
+      (ql/to-sql opts (assoc sel :ql/type :pg/sub-select))))
+
+(defmethod ql/to-sql
+  :pg/cte
+  [acc opts {with :with sel :select}]
+  (-> acc
+      (conj "WITH")
+      (ql/reduce-separated2 "," (fn [acc [k v]]
+                                  (-> acc
+                                      (into [(name k) "AS" "("])
+                                      (ql/to-sql opts (update v :ql/type (fn [x] (or x :pg/select))))
+                                      (conj ")")))
+                            (if (sequential? with) (partition 2 with) with))
+      (ql/to-sql opts
+                 (update sel :ql/type (fn [x] (or x :pg/select))))))
+
+(defmethod ql/to-sql
+  :pg/jsonb_set
+  [acc opts [_ doc pth val & [create-missed]]]
+  (-> acc
+      (conj "jsonb_set(")
+      (ql/to-sql opts doc)
+      (conj ",")
+      (conj (to-array-litteral pth))
+      (conj ",")
+      (ql/to-sql opts val)
+      (cond-> create-missed (conj ", true"))
+      (conj ")")))
+
+(defmethod ql/to-sql
+  :pg/jsonb_string
+  [acc opts [_ str]]
+  (-> acc
+      (conj "(jsonb_build_object('s',")
+      (ql/to-sql opts str)
+      (conj ")->'s')")))
+
+(defmethod ql/to-sql
+  :pg/to_jsonb
+  [acc opts [_ expr]]
+  (-> acc
+      (conj "to_jsonb(")
+      (ql/to-sql opts expr)
+      (conj ")")))
+
+(defmethod ql/to-sql
+  :pg/row_to_json
+  [acc opts [_ v]]
+  (-> acc
+      (conj "row_to_json(")
+      (ql/to-sql opts v)
+      (conj ")")))
+
+(defmethod ql/to-sql
+  :min
+  [acc opts [_ v]]
+  (-> acc
+      (conj "min(")
+      (ql/to-sql opts v)
+      (conj ")")))
+
+(defmethod ql/to-sql
+  :pg/row_to_jsonb
+  [acc opts [_ v]]
+  (-> acc
+      (conj "row_to_json(")
+      (ql/to-sql opts v)
+      (conj ")::jsonb")))
+
+(defmethod ql/to-sql
+  :pg/jsonb_strip_nulls
+  [acc opts [_ v]]
+  (-> acc
+      (conj "jsonb_strip_nulls(")
+      (ql/to-sql opts v)
+      (conj ")")))
+
+(defmethod ql/to-sql
+  :pg/array-strip-nulls
+  [acc opts [_ expr]]
+  (-> acc
+      (conj "(select array_agg(a) from unnest(")
+      (ql/to-sql opts expr)
+      (conj ") a where a is not null)")))
+
+(defmethod ql/to-sql
+  :pg/alphanum
+  [acc opts [_ expr]]
+  (-> acc
+      (conj "regexp_replace(")
+      (ql/to-sql opts expr)
+      (conj ",'[^a-zA-Z0-9]','', 'g')")))
+
+(defmethod ql/to-sql
+  :pg/parens
+  [acc opts [_ expr]]
+  (-> acc
+      (conj "(")
+      (ql/to-sql opts expr)
+      (conj ")")))
+
+(defmethod ql/to-sql
+  :pg/lower
+  [acc opts [_ expr]]
+  (-> acc
+      (conj "lower(")
+      (ql/to-sql opts expr)
+      (conj ")")))
+
+(defmethod ql/to-sql
+  :json_agg
+  [acc opts [_ v]]
+  (-> acc
+      (conj "json_agg(")
+      (ql/to-sql opts v)
+      (conj ")")))
+
+(defmethod ql/to-sql
+  :jsonb_agg
+  [acc opts [_ v]]
+  (-> acc
+      (conj "jsonb_agg(")
+      (ql/to-sql opts v)
+      (conj ")")))
+
+
+(defmethod ql/to-sql
+  :<>
+  [acc opts [_ a b]]
+  (-> acc
+      (ql/to-sql opts a)
+      (conj "<>")
+      (ql/to-sql opts b)))
+
+(defmethod ql/to-sql
+  :pg/insert
+  [acc opts {tbl :into vls :value ret :returning}]
+  (let [cols (->> (keys vls) (sort))]
+    (-> acc
+        (conj "INSERT INTO")
+        (conj (name tbl))
+        (conj "(")
+        (conj (->> cols (mapv name)  (str/join ", ")))
+        (conj ")")
+        (conj "VALUES")
+        (conj "(")
+        (ql/reduce-separated2 "," (fn [acc c] (ql/to-sql acc opts (get vls c))) cols)
+        (conj ")")
+        (cond->
+            ret (-> (conj "RETURNING")
+                    (ql/to-sql opts ret))))))
+
+(defmethod ql/to-sql
+  :resource||
+  [acc opts [_ & exprs]]
+  (-> acc 
+   (conj "resource ||")
+   (ql/reduce-separated2 "||" (fn [acc expr] (ql/to-sql acc opts expr)) exprs)))
+
+(defmethod ql/to-sql
+  :->>
+  [acc opts [_ col k]]
+  (-> acc
+      (conj "(")
+      (ql/to-sql opts col)
+      (conj (str "->> " (ql/string-litteral (name k))))
+      (conj ")")))
+
+(defmethod ql/to-sql
+  :->
+  [acc opts [_ col k]]
+  (-> acc
+      (conj "(")
+      (ql/to-sql opts col)
+      (conj (str "-> " (ql/string-litteral (name k))))
+      (conj ")")))
+
+(defmethod ql/to-sql
+  :#>>
+  [acc opts [_ col path]]
+  (-> acc
+      (conj "(")
+      (ql/to-sql opts col)
+      (conj (str "#>> " (to-array-litteral path)))
+      (conj ")")))
+
+(defmethod ql/to-sql
+  :#>
+  [acc opts [_ col path]]
+  (-> acc
+      (conj "(")
+      (ql/to-sql opts col)
+      (conj (str "#> " (to-array-litteral path)))
+      (conj ")")))
+
+(defmethod ql/to-sql
+  :pg/desc
+  [acc opts [_ expr]]
+  (-> acc
+      (ql/to-sql opts expr)
+      (conj "DESC")))
+
+(defmethod ql/to-sql
+  :pg/asc
+  [acc opts [_ expr]]
+  (-> acc
+      (ql/to-sql opts expr)
+      (conj "ASC")))
+
+(defmethod ql/to-sql
+  :pg/nulls-last
+  [acc opts [_ expr]]
+  (-> acc
+      (ql/to-sql opts expr)
+      (conj "NULLS LAST")))
+
+(defmethod ql/to-sql
+  :pg/nulls-first
+  [acc opts [_ expr]]
+  (-> acc
+      (ql/to-sql opts expr)
+      (conj "NULLS FIRST")))
+
+(defmethod ql/to-sql
+  :pg/array-agg
+  [acc opts [_ expr]]
+  (-> acc
+      (conj "array_agg(")
+      (ql/to-sql opts expr)
+      (conj ")")))
+
+(defmethod ql/to-sql
+  :pg/array-length
+  [acc opts [_ expr dim]]
+  (-> acc
+      (conj "array_length(")
+      (ql/to-sql opts expr)
+      (conj (str ", " dim ")"))))
+
+(defmethod ql/to-sql
+  :pg/jsonb-array-length
+  [acc opts [_ expr]]
+  (-> acc
+      (conj "jsonb_array_length(")
+      (ql/to-sql opts expr)
+      (conj ")")))
+
+(defmethod ql/to-sql
+  :pg/sum
+  [acc opts [_ expr]]
+  (-> acc
+      (conj "sum( ")
+      (ql/to-sql opts expr)
+      (conj ")")))

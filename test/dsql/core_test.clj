@@ -53,7 +53,5 @@
          (sut/format {} {:ql/type :test/select
                          :select {:resource :resource :string [:test/param "string"]}
                          :from :user})))
-  
-
 
   )

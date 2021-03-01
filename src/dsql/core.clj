@@ -1,5 +1,6 @@
 (ns dsql.core
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str])
+  (:refer-clojure :exclude [format]))
 
 (defn reduce-separated [sep acc f coll]
   (if (empty? coll)
@@ -11,6 +12,17 @@
           acc'
           (recur xs (conj acc' sep)))))))
 
+(defn reduce-separated2 [acc sep f coll]
+  (if (empty? coll)
+    acc
+    (loop [[x & xs] coll
+           acc acc]
+      (let [acc' (f acc x)]
+        (if (empty? xs)
+          acc'
+          (recur xs (conj acc' sep)))))))
+
+
 (defn reduce-acc [acc f coll]
   (reduce f acc coll))
 
@@ -18,6 +30,14 @@
   (or
    (and (map? x) (get x :ql/type))
    (when-let [m (meta x)] (:ql/type m))))
+
+(defn default-meta-type [node tp]
+  (if (or (get-type node)
+          (not (instance? clojure.lang.IMeta node)))
+    node
+    (with-meta node
+      (merge {:ql/type tp}
+             (meta node)))))
 
 (defn dispatch-sql [opts x]
   (or
@@ -38,13 +58,6 @@
     (assoc node :ql/type tp)
     node))
 
-(defn default-meta-type [node tp]
-  (if (or (get-type node)
-          (not (instance? clojure.lang.IMeta node)))
-    node
-    (with-meta node
-               (merge {:ql/type tp}
-                      (meta node)))))
 
 (defmulti to-sql (fn [_ opts node] (dispatch-sql opts node)))
 
@@ -75,13 +88,18 @@
 
 (defn parens [acc body-cb]
   (-> (conj acc "(")
-      (body-cb )
+      (body-cb)
       (conj  ")")))
 
 (defmethod to-sql
   clojure.lang.Keyword
   [acc opts node]
   (conj acc (name node)))
+
+(defmethod to-sql
+  java.lang.Boolean
+  [acc opts node]
+  (conj acc (if node "true" "false")))
 
 (defmethod to-sql
   java.lang.String
@@ -92,8 +110,6 @@
   nil
   [acc _ _]
   (conj acc "NULL"))
-
-
 
 (defn format [opts node]
   (let [sql-vec (to-sql [] opts node)]
