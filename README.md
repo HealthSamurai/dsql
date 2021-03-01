@@ -1,5 +1,7 @@
 # dsql - datastructure query language
 
+[![Build Status](https://travis-ci.org/HealthSamurai/dsql.svg?branch=master)](https://travis-ci.org/HealthSamurai/dsql)
+
 Previous experiment - https://github.com/HealthSamurai/ql
 
 Composable and extendable version of honeysql, 
