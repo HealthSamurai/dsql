@@ -1,6 +1,7 @@
 (ns dsql.pg-test
   (:require [dsql.pg :as sut]
-            [clojure.test :refer [deftest is testing]]))
+            [clojure.test :refer [deftest is testing]]
+            [dsql.core :as ql]))
 
 (defmacro format= [q patt]
   `(let [res# (sut/format ~q)]
@@ -26,36 +27,36 @@
   (format=
    {:select :*
     :from :user
-    :where [:= :user.id [:pg/param "u-1"]]
+    :where ^:pg/op[:= :user.id [:pg/param "u-1"]]
     :limit 100}
    ["SELECT * FROM user WHERE user.id = ? LIMIT 100" "u-1"])
 
   (format=
    {:select :*
     :from :user
-    :where [:= :user.id "u'-1"]
+    :where ^:pg/op[:= :user.id "u'-1"]
     :limit 100}
    ["SELECT * FROM user WHERE user.id = 'u''-1' LIMIT 100"])
 
   (format=
    {:select :*
     :from :user
-    :where [:= :user.id "u-1"]
+    :where ^:pg/op[:= :user.id "u-1"]
     :limit 100}
    ["SELECT * FROM user WHERE user.id = 'u-1' LIMIT 100"])
 
   (format=
    (merge
     {:ql/type :pg/and
-     :by-id [:= :id [:pg/param "u-1"]]}
-    {:by-status [:= :status "active"]})
+     :by-id ^:pg/op[:= :id [:pg/param "u-1"]]}
+    {:by-status ^:pg/op[:= :status "active"]})
    ["/*by-id*/ id = ? AND /*by-status*/ status = 'active'" "u-1"])
 
   (format=
    (merge
     {:ql/type :pg/or
-     :by-id [:= :id [:pg/param "u-1"]]}
-    {:by-status [:= :status "active"]})
+     :by-id ^:pg/op[:= :id [:pg/param "u-1"]]}
+    {:by-status ^:pg/op[:= :status "active"]})
    ["( /*by-id*/ id = ? OR /*by-status*/ status = 'active' )" "u-1"])
 
 
@@ -125,6 +126,9 @@
 
   (format= [:jsonb/-> :resource :name]
            ["resource -> 'name'"])
+
+  (format= [:jsonb/-> :resource 0]
+           ["resource -> 0"])
 
   (format= [:resource-> :name]
            ["resource->'name'"])
@@ -257,7 +261,7 @@
 
   (format=
    {:ql/type :pg/select
-    :select [:pg/list :id :resource]
+    :select [:pg/sql "id,resource"]
     :from :healthcareservices
     :where (with-meta
              (into [:and]
@@ -269,23 +273,7 @@
                          ["a" "b"]))
              {:pg/op true})
     :order-by :id}
-   ["SELECT id , resource FROM healthcareservices WHERE ( resource #>> '{name}' ILIKE 'a' OR resource #>> '{type,0,coding,0,code}' ILIKE 'a' OR resource #>> '{type,0,coding,1,code}' ILIKE 'a' ) and ( resource #>> '{name}' ILIKE 'b' OR resource #>> '{type,0,coding,0,code}' ILIKE 'b' OR resource #>> '{type,0,coding,1,code}' ILIKE 'b' ) ORDER BY id"])
-
-  (format= [:pg/list :a :b] ["a , b"])
-
-  (format=
-   {:ql/type :pg/select
-    :select [:pg/sql "id,resource"]
-    :from :healthcareservices
-    :where (->> ["a" "b"]
-                (mapv (fn [i]
-                        [:or
-                         [:ilike [:jsonb/#>> :resource [:name]] i]
-                         [:ilike [:jsonb/#>> :resource [:type 0 :coding 0 :code]] i]
-                         [:ilike [:jsonb/#>> :resource [:type 0 :coding 1 :code]] i]]))
-                (into [:and]))
-    :order-by :id}
-   ["SELECT id,resource FROM healthcareservices WHERE ( ( resource #>> '{name}' ILIKE 'a' OR resource #>> '{type,0,coding,0,code}' ILIKE 'a' OR resource #>> '{type,0,coding,1,code}' ILIKE 'a' ) AND ( resource #>> '{name}' ILIKE 'b' OR resource #>> '{type,0,coding,0,code}' ILIKE 'b' OR resource #>> '{type,0,coding,1,code}' ILIKE 'b' ) ) ORDER BY id"])
+   ["SELECT id,resource FROM healthcareservices WHERE ( resource #>> '{name}' ILIKE 'a' OR resource #>> '{type,0,coding,0,code}' ILIKE 'a' OR resource #>> '{type,0,coding,1,code}' ILIKE 'a' ) and ( resource #>> '{name}' ILIKE 'b' OR resource #>> '{type,0,coding,0,code}' ILIKE 'b' OR resource #>> '{type,0,coding,1,code}' ILIKE 'b' ) ORDER BY id"])
 
   (format=
    {:ql/type :pg/select
@@ -303,6 +291,10 @@
   (format=
    [:= 1 ^:pg/obj{:id :id}]
    ["1 = jsonb_build_object( 'id' , id )"])
+
+  (format=
+   [:= 1 ^:pg/obj^:eval-key{:id :id}]
+   ["1 = jsonb_build_object( id , id )"])
 
   (format=
    {:ql/type :pg/select
@@ -513,11 +505,37 @@
    ["INSERT INTO mytable ( a, b, z ) ( SELECT 'a' as a , b as b , z as z FROM t )"])
 
   (format=
+   {:ql/type :pg/insert-select
+    :into :mytable
+    :select {:select {:z :z :a "a" :b :b} :from :t}
+    :on-conflict {:on [:id]
+                  :do {:set {:a :excluded.a}
+                       :where [:= 1 2]}}}
+
+   ["INSERT INTO mytable ( a, b, z ) ( SELECT 'a' as a , b as b , z as z FROM t ) ON CONFLICT ( id ) DO UPDATE SET a = excluded.a WHERE 1 = 2"])
+
+  (format=
+   {:ql/type :pg/insert-select
+    :into :mytable
+    :select {:select {:z :z :a "a" :b :b} :from :t}
+    :on-conflict {:on [:id] :do :nothing}}
+   ["INSERT INTO mytable ( a, b, z ) ( SELECT 'a' as a , b as b , z as z FROM t ) ON CONFLICT ( id ) DO NOTHING"])
+
+  (format=
+   {:ql/type :pg/insert-select
+    :into :mytable
+    :select {:select {:z :z :a "a" :b :b} :from :t}
+    :returning :*}
+   ["INSERT INTO mytable ( a, b, z ) ( SELECT 'a' as a , b as b , z as z FROM t ) RETURNING *"])
+
+  (format=
    {:ql/type :pg/cte
     :with {:_ctp {:ql/type :pg/select
-                  :select {:a 1 :b 2}}
+                  :select {:a 1
+                           :b 2}}
            :_ctp2 {:ql/type :pg/select
-                  :select {:a 1 :b 2}}}
+                  :select {:a 1
+                           :b 2}}}
     :select {:ql/type :pg/select
              :select :*
              :from :_ctp}
@@ -528,6 +546,10 @@
   (format= 
    [:|| :resource ^:pg/obj{:a 1}]
    ["( resource ) || ( jsonb_build_object( 'a' , 1 ) )"])
+
+  (format= 
+   [:|| "a" :b "c"]
+   ["( 'a' ) || ( b ) || ( 'c' )"])
 
   (format= 
    [:pg/jsonb_set :resource [:a :b :c] "value" true]
@@ -570,6 +592,14 @@
             :from {:tbl :some_table}
             :where [:= :healthplan.id "ups"]}
            ["UPDATE healthplan SET a = tbl.b FROM some_table tbl WHERE healthplan.id = 'ups'"])
+
+  (format= {:ql/type :pg/update
+            :update :healthplan
+            :set {:a :tbl.b}
+            :from {:tbl :some_table}
+            :where [:= :healthplan.id "ups"]
+            :returning :*}
+           ["UPDATE healthplan SET a = tbl.b FROM some_table tbl WHERE healthplan.id = 'ups' RETURNING *"])
 
   (format= {:ql/type :pg/insert
             :into :healthplan
@@ -630,5 +660,49 @@
   (format=
    [:pg/nulls-first [:resource-> :date]]
    ["resource->'date' NULLS FIRST"])
-  
+
+  (format=
+   [:+ 1 1]
+   ["( 1 ) + ( 1 )"])
+
+  (format=
+   [:pg/list [:pg/desc [:resource-> :date]] [:resource-> :status]]
+   ["resource->'date' DESC , resource->'status'"])
+
+  (format=
+   (let [unit [:pg/coalesce [:int [:->> :b.resource :units]] 1]]
+     {:ql/type :pg/obj
+      :id :b.id
+      :case {:ql/type :pg/obj :id :b.id :resourceType "BillingCase"}
+      :cpt [:#>> :b.resource [:codes :cpt :code]]
+      :ordering_organization_name [:#>> :ordering_org.resource [:name]]
+      :specimen [:#>> :b.resource [:codes :cpt :display]]
+      :date [:->> :b.resource :date]
+      :unit unit
+      :order_id [:->> :b.resource :order_id]
+      :price [:numeric [:->> :b.resource :price]]
+      :patient_mrn [:pg/nth ^:pg/fn[:knife_extract_text :pt.resource [:pg/jsonb [[:identifier {:system "mrn"} :value]]]] 1]
+      :charge [:* [:numeric [:->> :p.resource :price]] unit]
+      :ref_prov_npi  [:#>> :b.resource [:referring_provider :id]]
+      :ref_prov_name [:#>> :b.resource [:referring_provider :display]]
+      :patient_name [:#>> :b.resource [:patient :display]]})
+   
+   ["jsonb_build_object( 'date' , ( b.resource ->> 'date' ) , 'unit' , COALESCE( ( ( b.resource ->> 'units' ) )::int , 1 ) , 'specimen' , ( b.resource #>> '{codes,cpt,display}' ) , 'patient_mrn' , ( knife_extract_text( pt.resource , '[[\"identifier\",{\"system\":\"mrn\"},\"value\"]]' ) )[ 1 ] , 'ref_prov_name' , ( b.resource #>> '{\"referring_provider\",display}' ) , 'charge' , ( ( ( p.resource ->> 'price' ) )::numeric ) * ( COALESCE( ( ( b.resource ->> 'units' ) )::int , 1 ) ) , 'ordering_organization_name' , ( ordering_org.resource #>> '{name}' ) , 'order_id' , ( b.resource ->> 'order_id' ) , 'patient_name' , ( b.resource #>> '{patient,display}' ) , 'id' , b.id , 'case' , jsonb_build_object( 'id' , b.id , 'resourceType' , 'BillingCase' ) , 'price' , ( ( b.resource ->> 'price' ) )::numeric , 'cpt' , ( b.resource #>> '{codes,cpt,code}' ) , 'ref_prov_npi' , ( b.resource #>> '{\"referring_provider\",id}' ) )"]
+   )
+
+  (format=
+   {:ql/type :pg/select
+    :select 1
+    :union {:test {:ql/type :pg/sub-select
+                   :select "2"}
+            :best {:ql/type :pg/sub-select
+                   :select "5"}}}
+   ["SELECT 1 UNION ( SELECT '2' )  /* test */  UNION ( SELECT '5' )  /* best */ "])
+
+  (format=
+   {:ql/type :pg/select
+    :select-distinct :test
+    :from :best}
+   ["SELECT DISTINCT test FROM best"])
+
   )

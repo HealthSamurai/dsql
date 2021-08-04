@@ -52,6 +52,8 @@
   (is (= ["SELECT resource as resource , ? as string FROM user" "string"]
          (sut/format {} {:ql/type :test/select
                          :select {:resource :resource :string [:test/param "string"]}
-                         :from :user})))
+                         :from :user}))))
+  
 
-  )
+
+
