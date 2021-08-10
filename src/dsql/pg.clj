@@ -104,6 +104,7 @@
   [[:explain :pg/explain]
    [:select :pg/projection]
    [:from :pg/from]
+   [:union :pg/union]
    [:left-join-lateral :pg/join-lateral]
    [:left-join :pg/left-join]
    [:join :pg/join]
@@ -132,6 +133,16 @@
                                 (-> acc
                                     (ql/to-sql opts node)
                                     (conj "as" (ql/escape-ident opts k))))))))
+
+(defmethod ql/to-sql
+  :pg/union
+  [acc opts data]
+  (->> (dissoc data :ql/type)
+       (ql/reduce-separated "UNION" acc
+                            (fn [acc [k node]]
+                              (-> acc
+                                  (ql/to-sql opts node)
+                                  (conj (str " /* " (name k) " */ ")))))))
 
 (defmethod ql/to-sql
   :pg/list
