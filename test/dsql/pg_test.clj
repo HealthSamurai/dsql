@@ -139,6 +139,10 @@
   (format= [:is-not [:resource-> :name] nil]
            ["resource->'name' IS NOT NULL"])
 
+
+  (format= [:= 1 1]
+           ["1 = 1"])
+
   (format= ^:pg/op[:|| :col [:pg/param "string"]]
            ["col || ?" "string"])
 
@@ -486,14 +490,20 @@
 
   (format=
    {:ql/type :pg/create-table
-    :table-name :mytable
+    :table-name "mytable"
     :if-not-exists true
+    :unlogged true
     :columns {:id          {:type "text" :primary-key true}
               :filelds     {:type "jsonb"}
               :match_tags  {:type "text[]"}
               :dedup_tags  {:type "text[]"}}}
-   ["CREATE TABLE IF NOT EXISTS mytable ( id text PRIMARY KEY , filelds jsonb , match_tags text[] , dedup_tags text[] )"])
+   ["CREATE UNLOGGED TABLE IF NOT EXISTS mytable ( id text PRIMARY KEY , filelds jsonb , match_tags text[] , dedup_tags text[] )"])
 
+  (format=
+   {:ql/type :pg/drop-table
+    :table-name "mytable"
+    :if-exists true}
+   ["DROP TABLE IF EXISTS mytable"])
 
 
 
@@ -501,6 +511,12 @@
   (format=
    {:ql/type :pg/insert-select
     :into :mytable
+    :select {:select {:z :z :a "a" :b :b} :from :t}}
+   ["INSERT INTO mytable ( a, b, z ) ( SELECT 'a' as a , b as b , z as z FROM t )"])
+
+  (format=
+   {:ql/type :pg/insert-select
+    :into "mytable"
     :select {:select {:z :z :a "a" :b :b} :from :t}}
    ["INSERT INTO mytable ( a, b, z ) ( SELECT 'a' as a , b as b , z as z FROM t )"])
 
@@ -538,8 +554,7 @@
                            :b 2}}}
     :select {:ql/type :pg/select
              :select :*
-             :from :_ctp}
-    }
+             :from :_ctp}}
    ["WITH _ctp AS ( SELECT 1 as a , 2 as b ) , _ctp2 AS ( SELECT 1 as a , 2 as b ) SELECT * FROM _ctp"])
 
 
@@ -704,5 +719,24 @@
     :select-distinct :test
     :from :best}
    ["SELECT DISTINCT test FROM best"])
+
+
+  (format=
+   {:ql/type :pg/select
+    :select-distinct :test
+    :from :best}
+   ["SELECT DISTINCT test FROM best"])
+
+  (format=
+   {:ql/type :pg/select
+    :select [:distinct :id]
+    :from :best}
+   ["SELECT DISTINCT( id ) FROM best"])
+
+  (format=
+   {:ql/type :pg/select
+    :select :*
+    :from [:pg/identifier "best"]}
+   ["SELECT * FROM best"])
 
   )
