@@ -1086,6 +1086,36 @@
       (conj ")")))
 
 (defmethod ql/to-sql
+  :pg/unaccent
+  [acc opts [_ expr]]
+  (-> acc
+      (conj "unaccent(")
+      (ql/to-sql opts expr)
+      (conj ")")))
+
+
+(defmethod ql/to-sql
+  :pg/regexp_replace
+  [acc opts [_ str pattern replacement flags]]
+  (-> acc
+      (conj "regexp_replace(")
+      (ql/to-sql opts str)
+      (ql/to-sql opts pattern)
+      (ql/to-sql opts replacement)
+      (ql/to-sql opts flags)
+      (conj ")")))
+
+
+(defmethod ql/to-sql
+  :pg/jsonpath-query->array
+  [acc opts [_ res jsonpath]]
+  (-> acc
+      (conj "(jsonb_path_query_array")
+      (ql/to-sql opts res)
+      (ql/to-sql opts jsonpath)
+      (conj ")")))
+
+(defmethod ql/to-sql
   :json_agg
   [acc opts [_ v]]
   (-> acc
@@ -1132,8 +1162,8 @@
   :resource||
   [acc opts [_ & exprs]]
   (-> acc 
-   (conj "resource ||")
-   (ql/reduce-separated2 "||" (fn [acc expr] (ql/to-sql acc opts expr)) exprs)))
+      (conj "resource ||")
+      (ql/reduce-separated2 "||" (fn [acc expr] (ql/to-sql acc opts expr)) exprs)))
 
 (defmethod ql/to-sql
   :->>
@@ -1308,3 +1338,18 @@
 (defmethod ql/to-sql :pg/identifier
   [acc opts [_ id & args]]
   (conj acc (ql/escape-ident opts id)))
+
+(defmethod ql/to-sql
+  :aidbox/text_search
+  [acc opts [_ res jsonpath]]
+  (-> acc
+      (ql/to-sql
+       opts
+       [:pg/lower
+        [:pg/unaccent
+         [:pg/regexp_replace
+          [:pg/cast [:pg/jsonpath-query->array res jsonpath] :text]
+          "(\", |[\\[\\]])"
+          ""
+          "g"]]])
+      ))
