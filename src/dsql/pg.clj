@@ -1110,7 +1110,7 @@
   :pg/jsonpath-query->array
   [acc opts [_ res jsonpath]]
   (-> acc
-      (conj "(jsonb_path_query_array")
+      (conj "jsonb_path_query_array(")
       (ql/to-sql opts res)
       (ql/to-sql opts jsonpath)
       (conj ")")))

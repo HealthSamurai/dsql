@@ -743,6 +743,6 @@
    [:aidbox/text_search
     :Patient.resource
     "$.name[*].keyvalue() ? (@.key != \"use\" && @.key != \"prefix\").value[*]"]
-   ["lower( unaccent( regexp_replace( ( (jsonb_path_query_array Patient.resource '$.name[*].keyvalue() ? (@.key != \"use\" && @.key != \"prefix\").value[*]' ) )::text '(\", |[\\[\\]])' '' 'g' ) ) )"])
+   ["lower( unaccent( regexp_replace( ( jsonb_path_query_array( Patient.resource '$.name[*].keyvalue() ? (@.key != \"use\" && @.key != \"prefix\").value[*]' ) )::text '(\", |[\\[\\]])' '' 'g' ) ) )"])
 
   )
