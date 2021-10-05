@@ -1,6 +1,6 @@
 # dsql - datastructure query language
 
-[![Build Status](https://travis-ci.org/HealthSamurai/dsql.svg?branch=master)](https://travis-ci.org/HealthSamurai/dsql)
+![example workflow](https://github.com/HealthSamurai/dsql/actions/workflows/main.yml/badge.svg)
 
 Previous experiment - https://github.com/HealthSamurai/ql
 
