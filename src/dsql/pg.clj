@@ -1115,6 +1115,7 @@
   (-> acc
       (conj "jsonb_path_query_array(")
       (ql/to-sql opts res)
+      (conj ",")
       (ql/to-sql opts jsonpath)
       (conj ")")))
 
