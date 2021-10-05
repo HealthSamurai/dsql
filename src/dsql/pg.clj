@@ -1100,8 +1100,11 @@
   (-> acc
       (conj "regexp_replace(")
       (ql/to-sql opts str)
+      (conj ",")
       (ql/to-sql opts pattern)
+      (conj ",")
       (ql/to-sql opts replacement)
+      (conj ",")
       (ql/to-sql opts flags)
       (conj ")")))
 
