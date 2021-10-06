@@ -1300,3 +1300,12 @@
 (defmethod ql/to-sql :pg/identifier
   [acc opts [_ id & args]]
   (conj acc (ql/escape-ident opts id)))
+
+(defmethod ql/to-sql :pg/extract
+  [acc opts [_ field-expr from]]
+  (-> acc
+      (conj "EXTRACT(")
+      (ql/to-sql opts field-expr)
+      (conj "from")
+      (ql/to-sql opts from)
+      (conj ")")))

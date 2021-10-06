@@ -737,4 +737,14 @@
    {:ql/type :pg/select
     :select :*
     :from [:pg/identifier "best"]}
-   ["SELECT * FROM best"]))
+   ["SELECT * FROM best"])
+
+  (format=
+   {:ql/type :pg/select
+    :select :*
+    :from :Patient
+    :where [:= [:pg/extract
+                [:pg/identifier "YEAR"]
+                [:pg/cast [:-> :resource :birthDate] :timestamp]]
+            "1980"]}
+   ["SELECT * FROM Patient WHERE EXTRACT( YEAR from ( ( resource -> 'birthDate' ) )::timestamp ) = '1980'"]))
