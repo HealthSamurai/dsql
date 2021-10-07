@@ -747,4 +747,32 @@
                 [:pg/identifier "YEAR"]
                 [:pg/cast [:-> :resource :birthDate] :timestamp]]
             "1980"]}
-   ["SELECT * FROM Patient WHERE EXTRACT( YEAR from ( ( resource -> 'birthDate' ) )::timestamp ) = '1980'"]))
+   ["SELECT * FROM Patient WHERE EXTRACT( YEAR from ( ( resource -> 'birthDate' ) )::timestamp ) = '1980'"])
+
+
+  (format=
+   {:ql/type :pg/select
+    :select  :*
+    :from :Patient
+    :order-by {[:||
+                [:#> :resource [:name 0 :family]]
+                [:#> :resource [:name 0 :given 0]]] :asc
+               :id :desc}}
+   ["SELECT * FROM Patient ORDER BY ( ( resource #> '{name,0,family}' ) ) || ( ( resource #> '{name,0,given,0}' ) ) asc , id desc"])
+
+  (format=
+   {:ql/type :pg/select
+    :select  :*
+    :from :Patient
+    :order-by [:||
+               [:#> :resource [:name 0 :family]]
+               [:#> :resource [:name 0 :given 0]]]}
+   ["SELECT * FROM Patient ORDER BY ( ( resource #> '{name,0,family}' ) ) || ( ( resource #> '{name,0,given,0}' ) )"])
+
+  (format=
+   {:ql/type :pg/select
+    :select  :*
+    :from :Patient
+    :order-by {:id :desc}}
+   ["SELECT * FROM Patient ORDER BY id desc"])
+  )

@@ -126,6 +126,19 @@
    [:for :pg/for]])
 
 (defmethod ql/to-sql
+  :pg/order-by
+  [acc opts data]
+  (if (map? data)
+    (->> (dissoc data :ql/type)
+         (ql/reduce-separated ","
+                              acc
+                              (fn [acc [expr dir]]
+                                (-> acc
+                                    (ql/to-sql opts expr)
+                                    (conj (name dir))))))
+    (ql/to-sql opts data)))
+
+(defmethod ql/to-sql
   :pg/projection
   [acc opts data]
   (->> (dissoc data :ql/type)
