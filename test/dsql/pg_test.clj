@@ -775,4 +775,30 @@
     :from :Patient
     :order-by {:id :desc}}
    ["SELECT * FROM Patient ORDER BY id desc"])
+
+
+  (format=
+    {:ql/type :pg/values
+     :values [1 2 3]}
+    ["VALUES ( 1 ) , ( 2 ) , ( 3 )"])
+
+  (format=
+    {:ql/type :pg/values
+     :keys [:foo :baz]
+     :values [{:foo 1
+               :baz 2}
+              {:foo 3
+               :baz 4}]}
+    ["VALUES ( 1 , 2 ) , ( 3 , 4 )"])
+
+  (format=
+    {:select :*
+     :from {:_values {:ql/type :pg/values
+                      :keys [:foo :baz]
+                      :values [{:foo 1
+                                :baz 2}
+                               {:foo 3
+                                :baz 4}]}}}
+    ["SELECT * FROM ( VALUES ( 1 , 2 ) , ( 3 , 4 ) ) _values ( foo , baz )"])
+
   )

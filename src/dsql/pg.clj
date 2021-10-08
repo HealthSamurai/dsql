@@ -356,11 +356,21 @@
   [acc opts node]
   (->> (dissoc node :ql/type)
        (ql/reduce-separated
-        "," acc
-        (fn [acc [k sub-node]]
-          (-> acc
-              (ql/to-sql opts sub-node)
-              (conj (name k)))))))
+         "," acc
+         (fn [acc [k sub-node]]
+           (if-let [ks (and (= :pg/values (:ql/type sub-node))
+                            (:keys sub-node))]
+             (-> acc
+                 (conj "(")
+                 (ql/to-sql opts sub-node)
+                 (conj ")")
+                 (conj (name k))
+                 (conj "(")
+                 (conj (str/join " , " (map name ks)))
+                 (conj ")"))
+             (-> acc
+                 (ql/to-sql opts sub-node)
+                 (conj (name k))))))))
 
 
 (defmethod ql/to-sql
@@ -1322,3 +1332,27 @@
       (conj "from")
       (ql/to-sql opts from)
       (conj ")")))
+
+(defmethod ql/to-sql :pg/values
+  [acc opts {vls :values, ks :keys}]
+  (if ks
+    (let [extract-keys (apply juxt ks)]
+      (-> acc
+          (conj "VALUES")
+          (conj "(")
+          (ql/reduce-separated2
+            ") , ("
+            (fn [acc c]
+              (ql/reduce-separated2
+                acc ","
+                (fn [acc c] (ql/to-sql acc opts c))
+                (extract-keys c)))
+            vls)
+          (conj ")")))
+    (-> acc
+        (conj "VALUES")
+        (conj "(")
+        (ql/reduce-separated2 ") , ("
+                              (fn [acc c] (ql/to-sql acc opts c))
+                              vls)
+        (conj ")"))))
