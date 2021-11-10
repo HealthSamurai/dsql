@@ -1126,6 +1126,20 @@
       (ql/to-sql opts b)))
 
 (defmethod ql/to-sql
+  :pg/insert-many
+  [acc opts {tbl :into vls :values ret :returning}]
+  (-> acc
+      (conj "INSERT INTO")
+      (conj (name tbl))
+      (conj "(")
+      (conj (->> (:keys vls) (mapv name)  (str/join ", ")))
+      (conj ")")
+      (ql/to-sql opts (with-meta vls {:ql/type :pg/values}))
+      (cond->
+          ret (-> (conj "RETURNING")
+                  (ql/to-sql opts ret)))))
+
+(defmethod ql/to-sql
   :pg/insert
   [acc opts {tbl :into vls :value ret :returning}]
   (let [cols (->> (keys vls) (sort))]
