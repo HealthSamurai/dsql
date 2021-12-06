@@ -801,4 +801,15 @@
                                 :baz 4}]}}}
     ["SELECT * FROM ( VALUES ( 1 , 2 ) , ( 3 , 4 ) ) _values ( foo , baz )"])
 
+  (format=
+   {:ql/type :pg/insert-many
+    :into    :conceptmaprule
+    :values   {:keys [:id :txid :resource :status]
+               :values [{:id 1 :resource "1" :status "ready"}
+                        {:id 2 :status "failure"}]}
+    :returning :*}
+   ["INSERT INTO conceptmaprule ( id, txid, resource, status ) VALUES ( 1 , NULL , '1' , 'ready' ) , ( 2 , NULL , NULL , 'failure' ) RETURNING *"])
+
+
+
   )

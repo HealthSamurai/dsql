@@ -102,6 +102,11 @@
   (conj acc (string-litteral node)))
 
 (defmethod to-sql
+  java.math.BigDecimal
+  [acc opts node]
+  (conj acc (string-litteral node)))
+
+(defmethod to-sql
   nil
   [acc _ _]
   (conj acc "NULL"))
