@@ -795,14 +795,14 @@
      (conj  ")"))))
 
 (defmethod ql/to-sql
-  :pg/unsafe-params-list
+  :pg/inplace-params-list
   [acc opts [_ params]]
   (let [acc (conj acc "(")]
     (->
      (->> params
           (ql/reduce-separated "," acc
                                (fn [acc p]
-                                 (conj acc (str \' p \')))))
+                                 (conj acc (ql/string-litteral p)))))
      (conj  ")"))))
 
 (defmethod ql/to-sql

@@ -818,7 +818,9 @@
 
 
   (format=
-   [:in :id [:pg/unsafe-params-list [1 2 3]]]
-   ["id IN ( '1' , '2' , '3' )"])
+   [:in :id [:pg/inplace-params-list ["Hello'y World'y"]]]
+   ["id IN ( 'Hello''y World''y' )"])
+
+
 
   )
