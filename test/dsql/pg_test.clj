@@ -810,6 +810,15 @@
     :returning :*}
    ["INSERT INTO conceptmaprule ( id, txid, resource, status ) VALUES ( 1 , NULL , '1' , 'ready' ) , ( 2 , NULL , NULL , 'failure' ) RETURNING *"])
 
+  (format=
+   {:ql/type :pg/select
+    :select  :*
+    :from    [:pg/escape-ident "group"]}
+   ["SELECT * FROM \"group\""])
 
+
+  (format=
+   [:in :id [:pg/unsafe-params-list [1 2 3]]]
+   ["id IN ( '1' , '2' , '3' )"])
 
   )

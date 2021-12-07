@@ -96,6 +96,13 @@
       (body-cb)
       (conj  ")")))
 
+(defn escape-ident-alt [{keywords :keywords}node]
+  (let [norm-name (str/upper-case (name node))]
+    (if (or (not (safe-identifier? norm-name))
+            (contains? keywords (keyword norm-name)))
+      (str "\"" (name node) "\"")
+      (name node))))
+
 (defmethod to-sql
   clojure.lang.Keyword
   [acc opts node]

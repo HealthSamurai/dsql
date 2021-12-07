@@ -795,6 +795,17 @@
      (conj  ")"))))
 
 (defmethod ql/to-sql
+  :pg/unsafe-params-list
+  [acc opts [_ params]]
+  (let [acc (conj acc "(")]
+    (->
+     (->> params
+          (ql/reduce-separated "," acc
+                               (fn [acc p]
+                                 (conj acc (str \' p \')))))
+     (conj  ")"))))
+
+(defmethod ql/to-sql
   :not
   [acc opts [_ expr]]
   (-> acc
@@ -1337,6 +1348,10 @@
 (defmethod ql/to-sql :pg/identifier
   [acc opts [_ id & args]]
   (conj acc (ql/escape-ident opts id)))
+
+(defmethod ql/to-sql :pg/escape-ident
+  [acc opts [_ id & args]]
+  (conj acc (ql/escape-ident-alt opts id)))
 
 (defmethod ql/to-sql :pg/extract
   [acc opts [_ field-expr from]]
