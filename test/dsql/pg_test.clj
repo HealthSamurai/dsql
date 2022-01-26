@@ -822,5 +822,7 @@
    ["id IN ( 'Hello''y World''y' )"])
 
 
-
-  )
+  (format=
+    [:pg/jsonb-path-query-array :resource [:pg/cast [:pg/param "$.foo[*]"] :jsonpath]]
+    ["jsonb_path_query_array( resource , ( ? )::jsonpath )"
+     "$.foo[*]"]))
