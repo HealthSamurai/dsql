@@ -220,6 +220,20 @@
 
            ["NOT resource->>'tags' @> jsonb_build_array( 'a' , 'b' , 'c' )"])
 
+  (format= [:not ["@@" [:resource->> :tags]
+                  [:pg/cast "$.foo[*]" :jsonpath]]]
+           ["NOT resource->>'tags' @@ ( '$.foo[*]' )::jsonpath"])
+
+  (format= [:not ["@@::jp" [:resource->> :tags]
+                  "$.foo[*]"]]
+           ["NOT resource->>'tags' @@ ( '$.foo[*]' )::jsonpath"])
+
+  (format= ["@?::jp" :resource "$.\"active\"[*] ? (@ == true)"]
+           ["resource @? ( '$.\"active\"[*] ? (@ == true)' )::jsonpath"])
+
+  (format= ["@?" :resource [:pg/cast "$.\"active\"[*] ? (@ == true)" :jsonpath]]
+           ["resource @? ( '$.\"active\"[*] ? (@ == true)' )::jsonpath"])
+
   (format= [:or
             [:ilike [:pg/sql "resource::text"] [:pg/param "%a%"]]
             [:ilike :id [:pg/param "%a%"]]]

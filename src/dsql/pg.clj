@@ -829,6 +829,39 @@
       (ql/to-sql opts r)))
 
 (defmethod ql/to-sql
+  "@@"
+  [acc opts [_ l r]]
+  (-> acc
+      (ql/to-sql opts l)
+      (conj "@@")
+      (ql/to-sql opts r)))
+
+(defmethod ql/to-sql
+  "@?"
+  [acc opts [_ l r]]
+  (-> acc
+      (ql/to-sql opts l)
+      (conj "@?")
+      (ql/to-sql opts r)))
+
+(defmethod ql/to-sql
+  "@@::jp"
+  [acc opts [_ l r]]
+  (-> acc
+      (ql/to-sql opts l)
+      (conj "@@")
+      (ql/to-sql opts [:pg/cast r :jsonpath])))
+
+(defmethod ql/to-sql
+  "@?::jp"
+  [acc opts [_ l r]]
+  (-> acc
+      (ql/to-sql opts l)
+      (conj "@?")
+      (ql/to-sql opts [:pg/cast r :jsonpath])))
+
+
+(defmethod ql/to-sql
   :pg/coalesce
   [acc opts [_ & args]]
   (-> (reduce
