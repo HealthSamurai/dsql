@@ -1307,6 +1307,16 @@
                              exprs)
         ")"))
 
+(defmethod ql/to-sql
+  :pg/call
+  [acc opts [_ f & exprs]]
+  (conj (ql/reduce-separated ","
+                             (conj acc (str (name f) "("))
+                             (fn [acc expr]
+                               (-> acc
+                                   (ql/to-sql opts expr)))
+                             exprs)
+        ")"))
 
 (defmethod ql/to-sql
   :pg/sum

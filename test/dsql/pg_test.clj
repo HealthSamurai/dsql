@@ -839,4 +839,18 @@
   (format=
     [:pg/jsonb-path-query-array :resource [:pg/cast [:pg/param "$.foo[*]"] :jsonpath]]
     ["jsonb_path_query_array( resource , ( ? )::jsonpath )"
-     "$.foo[*]"]))
+     "$.foo[*]"])
+
+
+  (format=
+    [:pg/call :foobar]
+    ["foobar( )"])
+
+  (format=
+    [:pg/call :foobar :resource]
+    ["foobar( resource )"])
+
+  (format=
+    [:pg/call :foobar :resource "baz" "quux"]
+    ["foobar( resource , 'baz' , 'quux' )"])
+  )
