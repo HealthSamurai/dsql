@@ -43,9 +43,11 @@
   :prom/op
   [acc opts [op a b]]
   (-> acc
+      (conj "(")
       (ql/to-sql opts a)
       (into [(name op)])
-      (ql/to-sql opts b)))
+      (ql/to-sql opts b)
+      (conj ")")))
 
 (defmethod ql/to-sql
   :prom/lables
@@ -146,7 +148,7 @@
     })
 
 (def ops
-  #{:/ :* :+ :- :pow})
+  #{:/ :* :+ :- :pow :!= :== := :> :<})
 
 (defn resolve-type [x]
   (cond
