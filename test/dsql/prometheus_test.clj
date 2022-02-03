@@ -59,4 +59,11 @@
             60]
            "((100*(kubelet_volume_stats_used_bytes/kubelet_volume_stats_capacity_bytes))>60)")
 
+
+  (format= {}
+           [:/ [:rate [:pg_requests_total [1 :h]]]
+            [:+ [:rate [:pg_updates_total [1 :h]]] [:rate [:pg_inserts_total [1 :h]]] [:rate [:pg_deletes_total [1 :h]]]]]
+           "(rate(pg_requests_total[1h])/(rate(pg_updates_total[1h])+rate(pg_inserts_total[1h])+rate(pg_deletes_total[1h])))")
+
+
   )
