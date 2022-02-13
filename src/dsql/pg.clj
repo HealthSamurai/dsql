@@ -322,7 +322,6 @@
 (defmethod ql/to-sql
   :pg/op-wrapped
   [acc opts [op l r]]
-  (prn ">>>" opts op l r)
   (-> acc
       (conj "(")
       (ql/to-sql opts l)
