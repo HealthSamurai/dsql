@@ -853,4 +853,13 @@
   (format=
     [:pg/call :foobar :resource "baz" "quux"]
     ["foobar( resource , 'baz' , 'quux' )"])
+
+  (format=
+   {:ql/type :pg/select
+    :select {:count [:pg/count*]}
+    :from :dft
+    :left-outer-join {:c {:table :test
+                          :on [:= 1 1]}}}
+   ["SELECT count(*) as count FROM dft LEFT OUTER JOIN test c ON 1 = 1"])
+
   )

@@ -114,6 +114,7 @@
    [:union :pg/union]
    [:left-join-lateral :pg/join-lateral]
    [:left-join :pg/left-join]
+   [:left-outer-join :pg/left-outer-join]
    [:join :pg/join]
    [:where :pg/and]
    [:group-by :pg/group-by]
@@ -255,6 +256,20 @@
               (conj (name (:table v)))
               (conj (name k) "ON")
               (ql/to-sql opts (ql/default-type (:on v) :pg/and)))))))
+
+(defmethod ql/to-sql
+  :pg/left-outer-join
+  [acc opts data]
+  (->> (dissoc data :ql/type)
+       (filter (fn [[k v]] (not (nil? v))))
+       (ql/reduce-separated
+        "LEFT OUTER JOIN" acc
+        (fn [acc [k v]]
+          (-> acc
+              (conj (name (:table v)))
+              (conj (name k) "ON")
+              (ql/to-sql opts (ql/default-type (:on v) :pg/and)))))))
+
 
 (defmethod ql/to-sql
   :pg/join
