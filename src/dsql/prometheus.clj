@@ -39,13 +39,15 @@
              (ql/to-sql acc opts arg))))
      (conj ")"))))
 
+
 (defmethod ql/to-sql
   :prom/op
-  [acc opts [op a b]]
-  (-> acc
-      (ql/to-sql opts a)
-      (into [(name op)])
-      (ql/to-sql opts b)))
+  [acc opts [op & args]]
+  (loop [acc (conj acc "(")
+         [el & rest] args]
+    (let [result (ql/to-sql acc opts el)]
+      (if (nil? rest) (conj result ")")
+          (recur (conj result (name op)) rest)))))
 
 (defmethod ql/to-sql
   :prom/lables
@@ -146,7 +148,7 @@
     })
 
 (def ops
-  #{:/ :* :+ :- :pow})
+  #{:/ :* :+ :- :pow :!= :== := :> :<})
 
 (defn resolve-type [x]
   (cond
