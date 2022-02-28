@@ -853,4 +853,11 @@
   (format=
     [:pg/call :foobar :resource "baz" "quux"]
     ["foobar( resource , 'baz' , 'quux' )"])
+
+  (format=
+   {:ql/type :pg/select
+    :select [:- :price :diff]
+    :from :my_db}
+   ["SELECT ( price ) - ( diff ) FROM my_db"])
+
   )

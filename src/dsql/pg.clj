@@ -1416,6 +1416,10 @@
       (ql/to-sql opts from)
       (conj ")")))
 
+(defmethod ql/to-sql :-
+  [acc opts [_ & args]]
+  (dsql.pg/operator acc opts "-" args))
+
 (defmethod ql/to-sql :pg/values
   [acc opts {vls :values, ks :keys}]
   (if ks
