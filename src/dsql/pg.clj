@@ -1185,7 +1185,7 @@
 
 (defmethod ql/to-sql
   :pg/insert-many
-  [acc opts {tbl :into vls :values ret :returning}]
+  [acc opts {tbl :into vls :values ret :returning on-conflict :on-conflict}]
   (-> acc
       (conj "INSERT INTO")
       (conj (name tbl))
@@ -1194,6 +1194,8 @@
       (conj ")")
       (ql/to-sql opts (with-meta vls {:ql/type :pg/values}))
       (cond->
+          on-conflict (-> (conj "ON CONFLICT")
+                          (ql/to-sql opts (assoc on-conflict :ql/type :pg/conflict-update)))
           ret (-> (conj "RETURNING")
                   (ql/to-sql opts ret)))))
 
