@@ -1460,3 +1460,16 @@
                               (fn [acc c] (ql/to-sql acc opts c))
                               vls)
         (conj ")"))))
+
+(defmethod ql/to-sql
+  :pg/build-sql-str
+  [acc opts [_ exprs]]
+  (ql/reduce-acc acc
+                 (fn [acc expr]
+                   (if (string? expr)
+                     (if (string? (peek acc))
+                       (conj (pop acc)
+                             (str (peek acc) expr))
+                       (conj acc expr))
+                     (ql/to-sql acc opts expr)))
+                 exprs))

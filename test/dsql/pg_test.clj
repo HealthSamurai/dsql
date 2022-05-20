@@ -860,4 +860,8 @@
     :from :my_db}
    ["SELECT ( price ) - ( diff ) FROM my_db"])
 
+  (format=
+    [:pg/build-sql-str ["" :resource "#>>" "'{foo, bar}' =" [:pg/param "baz"]]]
+    [" resource#>>'{foo, bar}' = ?" "baz"])
+
   )
