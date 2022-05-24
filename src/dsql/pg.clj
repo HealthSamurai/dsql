@@ -404,7 +404,7 @@
   [acc opts obj]
   (let [{:keys [eval-key]} (meta obj)
         acc (conj acc "jsonb_build_object(")
-        acc (->> (dissoc obj :ql/type) 
+        acc (->> (dissoc obj :ql/type)
                  (ql/reduce-separated
                   "," acc
                   (fn [acc [k sub-node]]
@@ -444,7 +444,7 @@
   :jsonb/obj
   [acc opts obj]
   (let [acc (conj acc "jsonb_build_object(")
-        acc (->> (dissoc obj :ql/type) 
+        acc (->> (dissoc obj :ql/type)
                  (ql/reduce-separated
                   "," acc
                   (fn [acc [k sub-node]]
@@ -954,6 +954,15 @@
       ["end )"])))
 
 
+;; *** Simple PostgreSQL CASE expression ***
+;;
+;; CASE expression
+;;     WHEN value_1 THEN result_1
+;;     WHEN value_2 THEN result_2
+;; [WHEN ...]
+;; ELSE
+;;     else_result
+;; END
 (defmethod ql/to-sql
   :case
   [acc opts [_ expression & pairs]]
@@ -976,6 +985,34 @@
                            (conj ")"))))))
       ["end )"])))
 
+
+;; *** A general CASE example ***
+;;
+;; CASE
+;;    WHEN length> 0 AND length <= 50 THEN 'Short'
+;;    WHEN length > 50 AND length <= 120 THEN 'Medium'
+;;    WHEN length> 120 THEN 'Long'
+;; END duration
+(defmethod ql/to-sql
+  :pg/case
+  [acc opts [_ & pairs]]
+  (println pairs)
+  (into
+   acc
+   (concat
+    ["( case "]
+    (->> (partition-all 2 pairs)
+         (mapcat (fn [pair]
+                   (if (= 1 (count pair))
+                     (-> ["else ("]
+                         (ql/to-sql opts (first pair))
+                         (conj ")"))
+                     (-> ["when ("]
+                         (ql/to-sql opts (first pair))
+                         (conj ") then (")
+                         (ql/to-sql opts (second pair))
+                         (conj ")"))))))
+    ["end )"])))
 
 (defmethod ql/to-sql
   :pg/create-table
@@ -1220,7 +1257,7 @@
 (defmethod ql/to-sql
   :resource||
   [acc opts [_ & exprs]]
-  (-> acc 
+  (-> acc
       (conj "resource ||")
       (ql/reduce-separated2 "||" (fn [acc expr] (ql/to-sql acc opts expr)) exprs)))
 
