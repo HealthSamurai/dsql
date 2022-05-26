@@ -864,4 +864,8 @@
     [:pg/build-sql-str ["" :resource "#>>" "'{foo, bar}' =" [:pg/param "baz"]]]
     [" resource#>>'{foo, bar}' = ?" "baz"])
 
+  (format=
+    {:select [:pg/build-sql-str ["ARRAY[" :resource "#>>" "'{foo, bar}' =" [:pg/param "baz"] "]"]]}
+    ["SELECT ARRAY[ resource#>>'{foo, bar}' = ? ]" "baz"])
+
   )
