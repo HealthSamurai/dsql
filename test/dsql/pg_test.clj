@@ -559,7 +559,20 @@
    ["INSERT INTO mytable ( a, b, z ) ( SELECT 'a' as a , b as b , z as z FROM t ) RETURNING *"])
 
   (format=
-   {:ql/type :pg/cte
+    {:ql/type :pg/cte
+     :with {:_ctp {:ql/type :pg/select
+                   :select {:a 1
+                            :b 2}}
+            :_ctp2 {:ql/type :pg/select
+                    :select {:a 1
+                             :b 2}}}
+     :select {:ql/type :pg/select
+              :select :*
+              :from :_ctp}}
+    ["WITH _ctp AS ( SELECT 1 as a , 2 as b ) , _ctp2 AS ( SELECT 1 as a , 2 as b ) SELECT * FROM _ctp"])
+
+  (format=
+   {:ql/type :pg/cte-recursive
     :with {:_ctp {:ql/type :pg/select
                   :select {:a 1
                            :b 2}}
@@ -569,7 +582,7 @@
     :select {:ql/type :pg/select
              :select :*
              :from :_ctp}}
-   ["WITH _ctp AS ( SELECT 1 as a , 2 as b ) , _ctp2 AS ( SELECT 1 as a , 2 as b ) SELECT * FROM _ctp"])
+   ["WITH RECURSIVE _ctp AS ( SELECT 1 as a , 2 as b ) , _ctp2 AS ( SELECT 1 as a , 2 as b ) SELECT * FROM _ctp"])
 
 
   (format= 

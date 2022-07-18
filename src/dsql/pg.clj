@@ -1103,6 +1103,20 @@
                  (update sel :ql/type (fn [x] (or x :pg/select))))))
 
 (defmethod ql/to-sql
+  :pg/cte-recursive
+  [acc opts {with :with sel :select}]
+  (-> acc
+      (conj "WITH RECURSIVE")
+      (ql/reduce-separated2 "," (fn [acc [k v]]
+                                  (-> acc
+                                      (into [(name k) "AS" "("])
+                                      (ql/to-sql opts (update v :ql/type (fn [x] (or x :pg/select))))
+                                      (conj ")")))
+                            (if (sequential? with) (partition 2 with) with))
+      (ql/to-sql opts
+                 (update sel :ql/type (fn [x] (or x :pg/select))))))
+
+(defmethod ql/to-sql
   :pg/jsonb_set
   [acc opts [_ doc pth val & [create-missed]]]
   (-> acc
