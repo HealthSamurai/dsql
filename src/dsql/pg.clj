@@ -112,6 +112,7 @@
    [:select-distinct :pg/projection]
    [:from :pg/from]
    [:union :pg/union]
+   [:union-all :pg/union-all]
    [:left-join-lateral :pg/join-lateral]
    [:left-join :pg/left-join]
    [:left-outer-join :pg/left-outer-join]
@@ -170,6 +171,16 @@
   [acc opts data]
   (->> (dissoc data :ql/type)
        (ql/reduce-separated "UNION" acc
+                            (fn [acc [k node]]
+                              (-> acc
+                                  (ql/to-sql opts node)
+                                  (conj (str " /* " (name k) " */ ")))))))
+
+(defmethod ql/to-sql
+  :pg/union-all
+  [acc opts data]
+  (->> (dissoc data :ql/type)
+       (ql/reduce-separated "UNION ALL" acc
                             (fn [acc [k node]]
                               (-> acc
                                   (ql/to-sql opts node)

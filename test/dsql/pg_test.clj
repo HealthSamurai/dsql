@@ -742,6 +742,15 @@
    ["SELECT 1 UNION ( SELECT '2' )  /* test */  UNION ( SELECT '5' )  /* best */ "])
 
   (format=
+    {:ql/type :pg/select
+     :select 1
+     :union-all {:test {:ql/type :pg/sub-select
+                        :select "2"}
+                 :best {:ql/type :pg/sub-select
+                        :select "5"}}}
+    ["SELECT 1 UNION ALL ( SELECT '2' )  /* test */  UNION ALL ( SELECT '5' )  /* best */ "])
+
+  (format=
    {:ql/type :pg/select
     :select-distinct :test
     :from :best}
