@@ -141,7 +141,7 @@
     (ql/to-sql opts data)))
 
 (defmethod ql/to-sql
-  :pg/projection
+  :pg/projection #_"NOTE: why here are two :pg/projection. TODO: remove this?"
   [acc opts data]
   (->> (dissoc data :ql/type)
        (ql/reduce-separated "," acc
@@ -546,13 +546,31 @@
 (defmethod ql/to-sql
   :pg/projection
   [acc opts data]
-  (->> (dissoc data :ql/type)
-       (sort-by first)
-       (ql/reduce-separated "," acc
-                            (fn [acc [k node]]
-                              (-> acc
-                                  (ql/to-sql opts node)
-                                  (conj "as" (ql/escape-ident opts k)))))))
+  (let [{proj-params :pg/projection, :as data-meta} (meta data)
+
+        acc (cond
+              (= :distinct proj-params)
+              (conj acc "DISTINCT")
+
+              (= :all proj-params)
+              (conj acc "ALL")
+
+              (and (map? proj-params) (:distinct-on proj-params))
+              (-> acc
+                  (conj "DISTINCT ON (")
+                  (conj (->> (:distinct-on proj-params) (map name) (str/join " , ")))
+                  (conj ")"))
+
+              :else acc)
+
+        data (with-meta data (dissoc data-meta :pg/projection))]
+    (->> (dissoc data :ql/type)
+         (sort-by first)
+         (ql/reduce-separated "," acc
+                              (fn [acc [k node]]
+                                (-> acc
+                                    (ql/to-sql opts node)
+                                    (conj "as" (ql/escape-ident opts k))))))))
 
 
 (def index-keys

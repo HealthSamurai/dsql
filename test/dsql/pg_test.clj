@@ -770,6 +770,47 @@
    ["SELECT DISTINCT( id ) FROM best"])
 
   (format=
+    {:ql/type :pg/select
+     :select
+     ^{:pg/projection {:distinct-on [:id :txid]}}
+     {:id       :id
+      :resource :resource
+      :txid     :txid}
+     :from :best}
+    ["SELECT DISTINCT ON ( id , txid ) id as id , resource as resource , txid as txid FROM best"])
+
+  (format=
+    {:ql/type :pg/select
+     :select
+     ^{:pg/projection {:distinct-on [:id]}}
+     {:id       :id
+      :resource :resource
+      :txid     :txid}
+     :from :best}
+    ["SELECT DISTINCT ON ( id ) id as id , resource as resource , txid as txid FROM best"])
+
+  (format=
+    {:ql/type :pg/select
+     :select
+     ^{:pg/projection :distinct}
+     {:id       :id
+      :resource :resource
+      :txid     :txid}
+     :from :best}
+    ["SELECT DISTINCT id as id , resource as resource , txid as txid FROM best"])
+
+  (format=
+    {:ql/type :pg/select
+     :select
+     ^{:pg/projection :all}
+     {:id       :id
+      :resource :resource
+      :txid     :txid}
+     :from :best}
+    ["SELECT ALL id as id , resource as resource , txid as txid FROM best"])
+
+
+  (format=
    {:ql/type :pg/select
     :select :*
     :from [:pg/identifier "best"]}
