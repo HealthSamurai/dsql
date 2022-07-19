@@ -792,6 +792,16 @@
   (format=
     {:ql/type :pg/select
      :select
+     ^{:pg/projection {:distinct-on [[:#>> :resource [:id]]]}}
+     {:id       :id
+      :resource :resource
+      :txid     :txid}
+     :from :best}
+    ["SELECT DISTINCT ON ( ( resource #>> '{id}' ) ) id as id , resource as resource , txid as txid FROM best"])
+
+  (format=
+    {:ql/type :pg/select
+     :select
      ^{:pg/projection :distinct}
      {:id       :id
       :resource :resource

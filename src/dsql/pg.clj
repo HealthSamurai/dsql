@@ -556,9 +556,9 @@
               (conj acc "ALL")
 
               (and (map? proj-params) (:distinct-on proj-params))
-              (-> acc
-                  (conj "DISTINCT ON (")
-                  (conj (->> (:distinct-on proj-params) (map name) (str/join " , ")))
+              (-> (ql/reduce-separated "," (conj acc "DISTINCT ON (")
+                                       (fn [acc node] (ql/to-sql acc opts node))
+                                       (:distinct-on proj-params))
                   (conj ")"))
 
               :else acc)
