@@ -9,7 +9,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.02
+      - uses: actions/checkout@v3.0.2
       - uses: actions/setup-java@v3.5.0
         with:
           distribution: "zulu"
