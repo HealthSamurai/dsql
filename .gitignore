@@ -1,2 +1,5 @@
 pgdata
 .cpcache
+.clj-kondo/.cache
+.nrepl-port
+.lsp

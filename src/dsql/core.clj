@@ -64,17 +64,17 @@
 
 (defmethod to-sql
   clojure.lang.PersistentArrayMap
-  [acc opts node]
+  [_acc _opts node]
   (throw (Exception. (pr-str node))))
 
 (defmethod to-sql
   java.lang.Long
-  [acc opts node]
+  [acc _opts node]
   (conj acc (str node)))
 
 (defmethod to-sql
   java.lang.Integer
-  [acc opts node]
+  [acc _opts node]
   (conj acc (str node)))
 
 
@@ -96,7 +96,7 @@
       (body-cb)
       (conj  ")")))
 
-(defn escape-ident-alt [{keywords :keywords}node]
+(defn escape-ident-alt [{keywords :keywords} node]
   (let [norm-name (str/upper-case (name node))]
     (if (or (not (safe-identifier? norm-name))
             (contains? keywords (keyword norm-name)))
@@ -105,17 +105,17 @@
 
 (defmethod to-sql
   clojure.lang.Keyword
-  [acc opts node]
+  [acc _opts node]
   (conj acc (name node)))
 
 (defmethod to-sql
   java.lang.Boolean
-  [acc opts node]
+  [acc _opts node]
   (conj acc (if node "true" "false")))
 
 (defmethod to-sql
   java.lang.String
-  [acc opts node]
+  [acc _opts node]
   (conj acc (string-litteral node)))
 
 (defmethod to-sql
