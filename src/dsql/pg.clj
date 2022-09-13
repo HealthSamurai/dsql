@@ -1072,6 +1072,18 @@
       (cond-> ex (conj "IF EXISTS"))
       (identifier opts tbl)))
 
+(defmethod ql/to-sql
+  :pg/create-extension
+  [acc opts {:keys [if-not-exists name schema cascade version]}]
+  (assert name "extension :name is required")
+  (cond-> acc
+      :always (conj "CREATE EXTENSION")
+      (true? if-not-exists) (conj "IF NOT EXISTS")
+      :always (conj name)
+      schema (into ["SCHEMA" schema])
+      version (into ["VERSION" version])
+      (true? cascade) (conj "CASCADE")))
+
 
 (def keys-for-conflict-update
   [[:set :pg/set]

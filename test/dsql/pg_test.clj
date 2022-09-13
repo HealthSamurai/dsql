@@ -941,4 +941,38 @@
     {:select [:pg/build-sql-str ["ARRAY[" :resource "#>>" "'{foo, bar}' =" [:pg/param "baz"] "]"]]}
     ["SELECT ARRAY[ resource#>>'{foo, bar}' = ? ]" "baz"])
 
+  (format=
+   {:ql/type :pg/create-extension
+    :name "jsonknife"
+    :schema "ext"
+    :if-not-exists true}
+   ["CREATE EXTENSION IF NOT EXISTS jsonknife SCHEMA ext"])
+
+  (format=
+   {:ql/type :pg/create-extension
+    :name "jsonknife"
+    :schema "ext"}
+   ["CREATE EXTENSION jsonknife SCHEMA ext"])
+
+  (format=
+   {:ql/type :pg/create-extension
+    :name "jsonknife"
+    :if-not-exists true}
+   ["CREATE EXTENSION IF NOT EXISTS jsonknife"])
+
+  (format=
+   {:ql/type :pg/create-extension
+    :name "jsonknife"}
+   ["CREATE EXTENSION jsonknife"])
+
+  (format=
+   {:ql/type :pg/create-extension
+    :name "jsonknife"
+    :schema "ext"
+    :cascade true
+    :version "1337"}
+   ["CREATE EXTENSION jsonknife SCHEMA ext VERSION 1337 CASCADE"])
+
+
+
   )
