@@ -7,9 +7,9 @@
   {:extra-paths ["test" "slides"]
    :extra-deps {org.clojure/tools.nrepl       {:mvn/version "0.2.13"}
                 org.clojure/core.rrb-vector   {:mvn/version "0.1.2"}
-                cider/cider-nrepl             {:mvn/version "0.28.5"}
+                cider/cider-nrepl             {:mvn/version "0.28.7"}
                 nrepl/nrepl                   {:mvn/version "1.0.0"}
-                refactor-nrepl/refactor-nrepl {:mvn/version "3.5.5"}
+                refactor-nrepl/refactor-nrepl {:mvn/version "3.6.0"}
 
                 healthsamurai/matcho           {:mvn/version "0.3.9"}
                 honeysql/honeysql              {:mvn/version "1.0.461"}
@@ -20,13 +20,13 @@
 
                 http-kit/http-kit   {:mvn/version "2.6.0"}
                 ring/ring-core      {:mvn/version "1.9.6"}
-                ring/ring-defaults  {:mvn/version "0.3.3"}
+                ring/ring-defaults  {:mvn/version "0.3.4"}
                 route-map/route-map {:mvn/version "0.0.7"}}
 
    :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]}
 
   :kaocha
-  {:extra-deps {lambdaisland/kaocha  {:mvn/version "1.69.1069"}}
+  {:extra-deps {lambdaisland/kaocha  {:mvn/version "1.71.1119"}}
    :extra-paths ["runner" "test" "test-resources"]
    :jvm-opts    ^:replace ["-XX:-OmitStackTraceInFastThrow"]
    :main-opts   ["-m" "kaocha.runner" "--config-file" "test/test.edn"]}}}
