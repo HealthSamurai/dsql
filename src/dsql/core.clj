@@ -77,6 +77,10 @@
   [acc _opts node]
   (conj acc (str node)))
 
+(defmethod to-sql
+  java.lang.Double
+  [acc _opts node]
+  (conj acc (str node)))
 
 (defn alpha-num? [s]
   (some? (re-matches #"^[a-zA-Z][a-zA-Z0-9]*$" s)))
