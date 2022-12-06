@@ -1484,6 +1484,10 @@
       (ql/to-sql opts expr)
       (conj ")")))
 
+(defmethod ql/to-sql :/
+  [acc opts [_ & args]]
+  (operator acc opts "/" args))
+
 (defmethod ql/to-sql :*
   [acc opts [_ & args]]
   (operator acc opts "*" args))
