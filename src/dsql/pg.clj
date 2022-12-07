@@ -610,6 +610,24 @@
          (conj "WHERE")
          (ql/to-sql opts where)))))
 
+(defmethod ql/to-sql
+  :pg/primary-key
+  [acc opts {table :table constraint-name :constraint columns :columns :as node}]
+  (when-not (and table constraint-name columns)
+    (throw (Exception. (str ":table, :constraint, :columns are required! Got " (pr-str node)))))
+  (-> acc
+      (conj "ALTER TABLE")
+      (conj (name table))
+      (conj "ADD CONSTRAINT")
+      (conj (name constraint-name))
+      (conj "PRIMARY KEY")
+      (conj "(")
+      (ql/reduce-separated2 ","
+                            (fn [acc exp]
+                              (conj acc (name exp)))
+                            columns)
+      (conj ")")))
+
 (defn resolve-type [x]
   (if-let [m (meta x)]
     (cond

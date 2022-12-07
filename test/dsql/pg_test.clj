@@ -973,6 +973,11 @@
     :version "1337"}
    ["CREATE EXTENSION jsonknife SCHEMA ext VERSION 1337 CASCADE"])
 
-
+  (format=
+   {:ql/type :pg/primary-key
+    :table "table1"
+    :constraint "table2_pkey"
+    :columns [:a :b]}
+   ["ALTER TABLE table1 ADD CONSTRAINT table2_pkey PRIMARY KEY ( a , b )"])
 
   )
