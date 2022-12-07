@@ -628,6 +628,17 @@
                             columns)
       (conj ")")))
 
+(defmethod ql/to-sql
+  :pg/create-table-as
+  [acc opts {table :table select :select :as node}]
+  (when-not (and table select)
+    (throw (Exception. (str ":table, :select are required! Got " (pr-str node)))))
+  (-> acc
+      (conj "CREATE TABLE")
+      (conj (name table))
+      (conj "AS")
+      (ql/to-sql opts select)))
+
 (defn resolve-type [x]
   (if-let [m (meta x)]
     (cond
