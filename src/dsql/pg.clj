@@ -1025,7 +1025,6 @@
 (defmethod ql/to-sql
   :pg/case
   [acc opts [_ & pairs]]
-  (println pairs)
   (into
    acc
    (concat
