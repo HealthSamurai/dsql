@@ -998,4 +998,12 @@
              :select 1}}
    ["CREATE TABLE table1 AS SELECT 1"])
 
+  (format=
+    {:ql/type :pg/create-table-as
+     :table "table1"
+     :if-not-exists true
+     :select {:ql/type :pg/select
+              :select 1}}
+    ["CREATE TABLE IF NOT EXISTS table1 AS SELECT 1"])
+
   )

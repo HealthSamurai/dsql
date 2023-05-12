@@ -639,11 +639,12 @@
 
 (defmethod ql/to-sql
   :pg/create-table-as
-  [acc opts {table :table select :select :as node}]
+  [acc opts {table :table select :select ifne :if-not-exists :as node}]
   (when-not (and table select)
     (throw (Exception. (str ":table, :select are required! Got " (pr-str node)))))
   (-> acc
       (conj "CREATE TABLE")
+      (cond-> ifne (conj "IF NOT EXISTS"))
       (conj (name table))
       (conj "AS")
       (ql/to-sql opts select)))
