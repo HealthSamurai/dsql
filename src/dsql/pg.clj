@@ -587,11 +587,13 @@
 
 (defmethod ql/to-sql
   :pg/index
-  [acc opts {idx :index tbl :on using :using expr :expr where :where :as node}]
+  [acc opts {idx :index unique :unique tbl :on using :using expr :expr where :where :as node}]
   (when-not (and idx tbl expr)
     (throw (Exception. (str ":index :on :expr are required! Got " (pr-str node)))))
   (-> acc
-      (conj "CREATE INDEX")
+      (conj "CREATE")
+      (cond-> unique (conj "UNIQUE"))
+      (conj "INDEX")
       (conj "IF NOT EXISTS")
       (conj (name idx))
       (conj "ON")

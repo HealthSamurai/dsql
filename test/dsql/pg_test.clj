@@ -1006,4 +1006,14 @@
               :select 1}}
     ["CREATE TABLE IF NOT EXISTS table1 AS SELECT 1"])
 
+  (format=
+    {:ql/type :pg/index
+     :index   :sdl_src_dst
+     :unique  true
+     :on      :sdl_src_dst
+     :expr    [:src :dst]
+     }
+    ["CREATE UNIQUE INDEX IF NOT EXISTS sdl_src_dst ON sdl_src_dst ( ( src ) , ( dst ) )"])
+
+
   )
