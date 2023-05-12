@@ -122,6 +122,17 @@
    ["CREATE INDEX IF NOT EXISTS users_id_idx ON users USING GIN ( ( resource->'a' ) , ( resource->'b' ) ) WHERE user.status = 'active'"]
    )
 
+  (format=
+    {:ql/type   :pg/drop-index
+     :index     :my_table_index
+     :if-exists true}
+    ["DROP INDEX IF EXISTS my_table_index"])
+
+  (format=
+    {:ql/type :pg/drop-index
+     :index   :my_table_index}
+    ["DROP INDEX my_table_index"])
+
   (format= nil ["NULL"])
 
   (format= [:jsonb/-> :resource :name]

@@ -611,6 +611,15 @@
          (ql/to-sql opts where)))))
 
 (defmethod ql/to-sql
+  :pg/drop-index
+  [acc opts {idx :index ife :if-exists}]
+  (-> acc
+      (conj "DROP")
+      (conj "INDEX")
+      (cond-> ife (conj "IF EXISTS"))
+      (identifier opts idx)))
+
+(defmethod ql/to-sql
   :pg/primary-key
   [acc opts {table :table constraint-name :constraint columns :columns :as node}]
   (when-not (and table constraint-name columns)
