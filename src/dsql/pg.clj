@@ -1333,7 +1333,7 @@
 
 (defmethod ql/to-sql
   :pg/insert
-  [acc opts {tbl :into vls :value ret :returning}]
+  [acc opts {tbl :into vls :value ret :returning on-conflict :on-conflict}]
   (let [cols (->> (keys vls) (sort))]
     (-> acc
         (conj "INSERT INTO")
@@ -1346,6 +1346,8 @@
         (ql/reduce-separated2 "," (fn [acc c] (ql/to-sql acc opts (get vls c))) cols)
         (conj ")")
         (cond->
+            on-conflict (-> (conj "ON CONFLICT")
+                            (ql/to-sql opts (assoc on-conflict :ql/type :pg/conflict-update)))
             ret (-> (conj "RETURNING")
                     (ql/to-sql opts ret))))))
 

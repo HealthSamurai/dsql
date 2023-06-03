@@ -660,6 +660,16 @@
             :returning :*}
            ["INSERT INTO healthplan ( a, b, c ) VALUES ( 1 , x , 'str' ) RETURNING *"])
 
+
+  (format= {:ql/type :pg/insert
+            :into :healthplan
+            :value {:a 1 :b :x :c "str"}
+            :on-conflict {:on [:id]
+                          :do {:set {:a :excluded.a}
+                               :where [:= 1 2]}}
+            :returning :*}
+           ["INSERT INTO healthplan ( a, b, c ) VALUES ( 1 , x , 'str' ) ON CONFLICT ( id ) DO UPDATE SET a = excluded.a WHERE 1 = 2 RETURNING *"])
+
   (format= [:resource|| ^:pg/obj{:a 1 :b 2}]
            ["resource || jsonb_build_object( 'a' , 1 , 'b' , 2 )"])
 
