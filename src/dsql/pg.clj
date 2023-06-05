@@ -870,13 +870,17 @@
 (defmethod ql/to-sql
   :pg/params-list
   [acc opts [_ params]]
-  (let [acc (conj acc "(")]
-    (->
-     (->> params
-          (ql/reduce-separated "," acc
-                               (fn [acc p]
-                                 (conj acc ["?" p]))))
-     (conj  ")"))))
+  (if (seq params)
+    (let [acc (conj acc "(")]
+      (->
+       (->> params
+            (ql/reduce-separated "," acc
+                                 (fn [acc p]
+                                   (conj acc ["?" p]))))
+       (conj  ")")))
+    (throw (ex-info ":pg/params-list can not be empty"
+                    {:ql/type :pg/params-list
+                     :code :params-required}))))
 
 (defmethod ql/to-sql
   :pg/inplace-params-list

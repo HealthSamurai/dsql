@@ -220,6 +220,18 @@
   (format= [:pg/params-list [1 2 3]]
            ["( ? , ? , ? )" 1 2 3])
 
+  (= {:ql/type :pg/params-list :code :params-required}
+   (try (sut/format [:pg/params-list nil])
+        (catch clojure.lang.ExceptionInfo e (ex-data e))))
+
+  (= {:ql/type :pg/params-list :code :params-required}
+   (try (sut/format [:pg/params-list []])
+        (catch clojure.lang.ExceptionInfo e (ex-data e))))
+
+  (= {:ql/type :pg/params-list :code :params-required}
+   (try (sut/format [:pg/params-list '()])
+          (catch clojure.lang.ExceptionInfo e (ex-data e))))
+
   (format= [:in :column [:pg/params-list [1 2 3]]]
            ["column IN ( ? , ? , ? )" 1 2 3])
 
