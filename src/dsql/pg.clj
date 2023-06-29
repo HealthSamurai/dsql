@@ -1616,3 +1616,56 @@
                              (conj acc expr))
                            (ql/to-sql acc opts expr)))
                        exprs)))
+
+
+(defn mk-columns [columns]
+  (->> columns
+       (reduce-kv
+        (fn [acc column opts]
+          (conj acc (str (name column) " " (str/join " " (map name opts)))))
+        [])
+       (str/join ", ")))
+
+(defn mk-options [options]
+  (->> options
+       (reduce-kv
+        (fn [acc opt val]
+          (conj acc (str (name opt) " '" (name val) "'")))
+        [])
+       (str/join ", ")))
+
+(defmethod ql/to-sql :pg/create-table
+  [acc opts {:keys [foreign options table columns server partition-by partition-of for] ifne :if-not-exists :as node}]
+  (-> acc
+      (conj "CREATE")
+      (cond-> foreign (conj "FOREIGN"))
+      (conj "TABLE")
+      (cond-> ifne (conj "IF NOT EXISTS"))
+      (conj (name table))
+      (cond-> columns (conj "(" (mk-columns columns) ")"))
+      (cond-> partition-of (conj "partition  of" (name partition-of) ))
+      (cond-> for (conj "for values"
+                        (when-let [f (:from for)] (str "from (" f ")"))
+                        (when-let [t (:to   for)] (str "to   (" t ")"))))
+
+      (cond-> partition-by (conj "partition  by" (name (:method partition-by)) " (" (name (:expr partition-by)) ")"))
+      (cond-> server (conj "SERVER" (name server)))
+      (cond-> options (conj "OPTIONS ("  (mk-options options) ")"))
+      ))
+
+
+(defmethod ql/to-sql :pg/create-server
+  [acc opts {:keys [fdw options] ifne :if-not-exists :as node}]
+  (-> acc
+      (conj "CREATE SERVER")
+      (cond-> ifne (conj "IF NOT EXISTS"))
+      (conj (name (:name node)))
+      (cond-> fdw (conj "FOREIGN DATA WRAPPER" fdw ))
+      (cond-> options (conj "OPTIONS (" (mk-options options) ")"))))
+
+(defmethod ql/to-sql :pg/create-user-mapping
+  [acc opts {:keys [user server options]  :as node}]
+  (-> acc
+      (conj "CREATE USER MAPPING FOR" (name user))
+      (conj "SERVER" (name server))
+      (cond-> options (conj "OPTIONS" "(" (mk-options options) ")"))))
