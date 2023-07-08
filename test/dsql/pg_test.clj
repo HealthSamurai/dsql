@@ -31,6 +31,14 @@
     :limit 100}
    ["SELECT * FROM user WHERE user.id = ? LIMIT 100" "u-1"])
 
+
+  (format=
+   {:select :*
+    :from :user
+    :where [:= :user.id [:pg/param "u-1"]]
+    :limit 100}
+   ["SELECT * FROM user WHERE user.id = ? LIMIT 100" "u-1"])
+
   (format=
    {:select :*
     :from :user
