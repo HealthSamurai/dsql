@@ -1667,8 +1667,10 @@
       (cond-> options (conj "OPTIONS (" (mk-options options) ")"))))
 
 (defmethod ql/to-sql :pg/create-user-mapping
-  [acc opts {:keys [user server options]  :as node}]
+  [acc opts {:keys [user server options] ifne :if-not-exists  :as node}]
   (-> acc
-      (conj "CREATE USER MAPPING FOR" (name user))
+      (conj "CREATE USER MAPPING")
+      (cond-> ifne (conj "IF NOT EXISTS"))
+      (conj "FOR"  (name user))
       (conj "SERVER" (name server))
       (cond-> options (conj "OPTIONS" "(" (mk-options options) ")"))))
