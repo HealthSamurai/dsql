@@ -556,6 +556,12 @@
   (format=
    {:ql/type :pg/insert-select
     :into :mytable
+    :select {:select :* :from :t}}
+   ["INSERT INTO mytable ( SELECT * FROM t )"])
+
+  (format=
+   {:ql/type :pg/insert-select
+    :into :mytable
     :select {:select {:z :z :a "a" :b :b} :from :t}}
    ["INSERT INTO mytable ( a, b, z ) ( SELECT 'a' as a , b as b , z as z FROM t )"])
 
@@ -1020,6 +1026,12 @@
     :constraint "table2_pkey"
     :columns [:a :b]}
    ["ALTER TABLE table1 ADD CONSTRAINT table2_pkey PRIMARY KEY ( a , b )"])
+
+  (format=
+   {:ql/type :pg/alter-table
+    :table "table1"
+    :add {:primary-key [:a :b]}}
+   ["ALTER TABLE table1 ADD PRIMARY KEY ( a , b )"])
 
   (format=
    {:ql/type :pg/create-table-as

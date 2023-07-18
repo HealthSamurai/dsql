@@ -640,6 +640,20 @@
       (conj ")")))
 
 (defmethod ql/to-sql
+  :pg/alter-table
+  [acc opts {table :table {pk :primary-key :as add} :add :as node}]
+  (-> acc
+      (conj "ALTER TABLE")
+      (conj (name table))
+      (cond-> add (conj "ADD"))
+      (cond-> pk
+        (-> (conj "PRIMARY KEY")
+            (conj "(")
+            (ql/reduce-separated2 "," (fn [acc exp] (conj acc (name exp))) pk)
+            (conj ")")))
+      ))
+
+(defmethod ql/to-sql
   :pg/create-table-as
   [acc opts {table :table select :select ifne :if-not-exists :as node}]
   (when-not (and table select)
@@ -1199,9 +1213,10 @@
   (-> acc
       (conj "INSERT INTO")
       (identifier opts tbl)
-      (conj "(")
-      (conj (->> (keys proj) (sort) (mapv name)  (str/join ", ")))
-      (conj ")")
+      (cond->  (map? proj)
+        (-> (conj "(")
+            (conj (->> (keys proj) (sort) (mapv name)  (str/join ", ")))
+            (conj ")")))
       (ql/to-sql opts (assoc sel :ql/type :pg/sub-select))
       (cond->
           on-conflict (-> (conj "ON CONFLICT")
