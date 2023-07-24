@@ -140,15 +140,6 @@
                                     (conj (name dir))))))
     (ql/to-sql opts data)))
 
-(defmethod ql/to-sql
-  :pg/projection #_"NOTE: why here are two :pg/projection. TODO: remove this?"
-  [acc opts data]
-  (->> (dissoc data :ql/type)
-       (ql/reduce-separated "," acc
-                             (fn [acc [k node]]
-                               (-> acc
-                                   (ql/to-sql opts node)
-                                   (conj "as" (ql/escape-ident opts k)))))))
 
 (defmethod ql/to-sql
   :pg/explain
@@ -551,6 +542,9 @@
         acc (cond
               (= :distinct proj-params)
               (conj acc "DISTINCT")
+
+              (= :everything proj-params)
+              (conj acc "*,")
 
               (= :all proj-params)
               (conj acc "ALL")

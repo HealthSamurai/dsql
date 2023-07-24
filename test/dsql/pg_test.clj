@@ -551,7 +551,11 @@
    ["DROP TABLE IF EXISTS mytable"])
 
 
-
+  (format=
+   {:select ^{:pg/projection :everything }
+    {:state "archived"}
+    :from   :archived}
+   ["SELECT *, 'archived' as state FROM archived"])
 
   (format=
    {:ql/type :pg/insert-select
