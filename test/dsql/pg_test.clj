@@ -53,6 +53,21 @@
     :limit 100}
    ["SELECT * FROM user WHERE user.id = 'u-1' LIMIT 100"])
 
+  (testing "select columns"
+   (format=
+    {:select [:pg/columns :a :b :c]
+     :from :user}
+    ["SELECT a , b , c FROM user"])
+
+   (format=
+    {:select [:pg/columns :a [:b "deleted"] :c] :from :user}
+    ["SELECT a , ? b , c FROM user" "deleted"])
+
+   (format=
+    {:select [:pg/columns :a [:b "deleted"] [:c 9]] :from :user}
+    ["SELECT a , ? b , ? c FROM user" "deleted" 9])
+   )
+
   (format=
    (merge
     {:ql/type :pg/and
@@ -92,14 +107,14 @@
    ["SELECT * FROM patient LIMIT 10"])
 
   (format=
-   {:select :* 
+   {:select :*
     :from :patient
     :where {}
     :limit 10}
    ["SELECT * FROM patient LIMIT 10"])
 
   (format=
-   {:select :* 
+   {:select :*
     :from :patient
     :where {:nil nil
             :null nil}
@@ -107,7 +122,7 @@
    ["SELECT * FROM patient LIMIT 10"])
 
   (format=
-   {:select :* 
+   {:select :*
     :from :patient
     :group-by {:name :name, :same :same}
     :limit 10}
@@ -359,7 +374,7 @@
     :order-by :id
     :limit 5}
    ["SELECT p.resource || jsonb_build_object( 'id' , p.id ) as pr , resource || jsonb_build_object( 'id' , id ) as resource FROM oru LEFT JOIN practitioner p ON /*by-id*/ practitioner.id = p.resource #>> '{\"patient_group\",\"order_group\",0,order,requester,provider,0,identifier,value}' LEFT JOIN organization org ON /*by-id*/ organization.id = p.resource #>> '{\"patient_group\",\"order_group\",0,order,contact,phone,0,phone}' WHERE id ILIKE '%Z38886%' ORDER BY id LIMIT 5"]
-   
+
    )
 
   (format=
@@ -474,7 +489,7 @@
                    :resource
                    ^:pg/obj{:caseNumber [:pg/param "new-case-id"]}]}
     :where ^:pg/op [:= :id [:pg/param "doc-id"]]}
-   ["UPDATE Document SET resource = resource || jsonb_build_object( 'caseNumber' , ? ) WHERE id = ?"            
+   ["UPDATE Document SET resource = resource || jsonb_build_object( 'caseNumber' , ? ) WHERE id = ?"
     "new-case-id"
     "doc-id"])
   {:ql/type :pg/projection
@@ -626,45 +641,45 @@
    ["WITH RECURSIVE _ctp AS ( SELECT 1 as a , 2 as b ) , _ctp2 AS ( SELECT 1 as a , 2 as b ) SELECT * FROM _ctp"])
 
 
-  (format= 
+  (format=
    [:|| :resource ^:pg/obj{:a 1}]
    ["( resource ) || ( jsonb_build_object( 'a' , 1 ) )"])
 
-  (format= 
+  (format=
    [:|| "a" :b "c"]
    ["( 'a' ) || ( b ) || ( 'c' )"])
 
-  (format= 
+  (format=
    [:pg/jsonb_set :resource [:a :b :c] "value" true]
    ["jsonb_set( resource , '{a,b,c}' , 'value' , true )"])
 
-  (format= 
+  (format=
    [:pg/jsonb_set :resource [:a :b :c] [:pg/param "pid"]]
    ["jsonb_set( resource , '{a,b,c}' , ? )" "pid"]
    )
 
-  (format= 
+  (format=
    [:pg/jsonb_string "String"]
    ["(jsonb_build_object('s', 'String' )->'s')"])
 
-  (format= 
+  (format=
    [:pg/row_to_json :p.*]
    ["row_to_json( p.* )"])
 
 
-  (format= 
+  (format=
    [:<> :a :b]
    ["a <> b"])
 
-  (format= 
+  (format=
    [:pg/jsonb {:a 1 :b 2}]
    ["'{\"a\":1,\"b\":2}'"])
 
-  (format= 
+  (format=
    [:pg/jsonb_strip_nulls :obj]
    ["jsonb_strip_nulls( obj )"])
 
-  ;; (format= 
+  ;; (format=
   ;;  {:select ^:pg/jsonb{:a 1 :b 2}}
   ;;  ["'{\"a\":1,\"b\":2}'"])
 
@@ -704,11 +719,11 @@
            ["resource || jsonb_build_object( 'a' , 1 , 'b' , 2 )"])
 
 
-  (format= 
+  (format=
    [:min :col]
    ["min( col )"])
 
-  (format= 
+  (format=
    [:jsonb_agg :col]
    ["jsonb_agg( col )"])
 
@@ -726,19 +741,19 @@
    ["SELECT id FROM BillingCase b WHERE ( b.resource ->> 'status' = 'client.draft' AND b.resource #>> '{\"billing_master\",id}' = '132' AND ( b.resource ->> 'date' )::date <= ( '2020-11-03' )::date ) FOR update"])
 
 
-  (format= 
+  (format=
    [:->> :d.resource :key]
    ["( d.resource ->> 'key' )"])
 
-  (format= 
+  (format=
    [:#>> :d.resource [:a :b]]
    ["( d.resource #>> '{a,b}' )"])
 
-  (format= 
+  (format=
    [:pg/desc [:resource-> :date]]
    ["resource->'date' DESC"])
 
-  (format= 
+  (format=
    [:pg/asc [:resource-> :date]]
    ["resource->'date' ASC"])
 
@@ -749,7 +764,7 @@
   (format=
    [:pg/nulls-last [:resource-> :date]]
    ["resource->'date' NULLS LAST"])
-  
+
   (format=
    [:pg/nulls-first [:resource-> :date]]
    ["resource->'date' NULLS FIRST"])
@@ -779,7 +794,7 @@
       :ref_prov_npi  [:#>> :b.resource [:referring_provider :id]]
       :ref_prov_name [:#>> :b.resource [:referring_provider :display]]
       :patient_name [:#>> :b.resource [:patient :display]]})
-   
+
    ["jsonb_build_object( 'date' , ( b.resource ->> 'date' ) , 'unit' , COALESCE( ( ( b.resource ->> 'units' ) )::int , 1 ) , 'specimen' , ( b.resource #>> '{codes,cpt,display}' ) , 'patient_mrn' , ( knife_extract_text( pt.resource , '[[\"identifier\",{\"system\":\"mrn\"},\"value\"]]' ) )[ 1 ] , 'ref_prov_name' , ( b.resource #>> '{\"referring_provider\",display}' ) , 'charge' , ( ( ( p.resource ->> 'price' ) )::numeric ) * ( COALESCE( ( ( b.resource ->> 'units' ) )::int , 1 ) ) , 'ordering_organization_name' , ( ordering_org.resource #>> '{name}' ) , 'order_id' , ( b.resource ->> 'order_id' ) , 'patient_name' , ( b.resource #>> '{patient,display}' ) , 'id' , b.id , 'case' , jsonb_build_object( 'id' , b.id , 'resourceType' , 'BillingCase' ) , 'price' , ( ( b.resource ->> 'price' ) )::numeric , 'cpt' , ( b.resource #>> '{codes,cpt,code}' ) , 'ref_prov_npi' , ( b.resource #>> '{\"referring_provider\",id}' ) )"]
    )
 

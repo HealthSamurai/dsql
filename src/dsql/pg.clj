@@ -140,7 +140,6 @@
                                     (conj (name dir))))))
     (ql/to-sql opts data)))
 
-
 (defmethod ql/to-sql
   :pg/explain
   [acc opts data]
@@ -193,6 +192,7 @@
           (-> acc
               (conj (str "/*" (name k) "*/"))
               (ql/to-sql opts v))))))
+
 (defmethod ql/to-sql
   :pg/or
   [acc opts data]
@@ -240,11 +240,11 @@
                                    (conj "(")
                                    (ql/to-sql opts expr)
                                    (conj ")"))))))
+
 (defmethod ql/to-sql
   :||
   [acc opts [_ & args]]
   (operator acc opts "||" args))
-
 
 (defmethod ql/to-sql
   :pg/left-join
@@ -271,7 +271,6 @@
               (conj (name (:table v)))
               (conj (name k) "ON")
               (ql/to-sql opts (ql/default-type (:on v) :pg/and)))))))
-
 
 (defmethod ql/to-sql
   :pg/join
@@ -313,15 +312,15 @@
   [acc opts data]
   (->> keys-for-select
        (ql/reduce-acc
-        acc
-        (fn [acc [k default-type]]
-          (let [sub-node (get data k)]
-            (if (and sub-node
-                     (not (and (map? sub-node) (empty? (strip-nils sub-node)))))
-              (-> acc
-                  (conj (str/upper-case (str/replace (name k) #"-" " ")))
-                  (ql/to-sql opts (ql/default-type sub-node default-type)))
-              acc))))))
+         acc
+         (fn [acc [k default-type]]
+           (let [sub-node (get data k)]
+             (if (and sub-node
+                      (not (and (map? sub-node) (empty? (strip-nils sub-node)))))
+               (-> acc
+                   (conj (str/upper-case (str/replace (name k) #"-" " ")))
+                   (ql/to-sql opts (ql/default-type sub-node default-type)))
+               acc))))))
 
 (defmethod ql/to-sql
   :pg/select
@@ -387,7 +386,6 @@
              (-> acc
                  (ql/to-sql opts sub-node)
                  (conj (name k))))))))
-
 
 (defmethod ql/to-sql
   :pg/param
@@ -456,14 +454,13 @@
                         (ql/to-sql opts sub-node)))))]
     (conj acc ")")))
 
-
 (defn alpha-num? [s]
   (some? (re-matches #"^[a-zA-Z][a-zA-Z0-9]*$" s)))
 
 ;; (alpha-num? "a123")
 ;; (alpha-num? "1a123")
 ;; (alpha-num? "a b123")
-  ;; (alpha-num? "hp.type")
+;; (alpha-num? "hp.type")
 
 (defn- to-array-list [arr]
   (->> arr
@@ -509,8 +506,6 @@
   (conj acc
         [(str "?::" (name tp) "[]")
          (to-array-value arr)]))
-
-
 
 (defmethod ql/to-sql
   :pg/index-expr
@@ -1533,6 +1528,7 @@
                             (fn [acc expr]
                               (-> acc
                                   (ql/to-sql opts expr))))))
+
 (defmethod ql/to-sql
   :int
   [acc opts [_ expr]]
@@ -1662,10 +1658,6 @@
                            (ql/to-sql acc opts expr)))
                        exprs)))
 
-
-
-
-
 (defmethod ql/to-sql :pg/create-server
   [acc opts {:keys [fdw options] ifne :if-not-exists :as node}]
   (-> acc
@@ -1683,3 +1675,24 @@
       (conj "FOR"  (name user))
       (conj "SERVER" (name server))
       (cond-> options (conj "OPTIONS" "(" (mk-options options) ")"))))
+
+(defn join-vec [separator coll]
+  (pop (reduce (fn [acc value] (into [] (concat acc value [separator]))) [] coll)))
+
+(defn parse-column [column]
+  (cond
+    (keyword? column) [(name column)]
+    (vector? column) [["?" (second column)] (name (first column))]))
+
+(defmethod ql/to-sql
+  :pg/columns
+  [acc opts node]
+  (into [] (concat acc (join-vec "," (->> (rest node) (mapv parse-column))))))
+
+(comment
+  (join-vec "," [[1 2] [3] [4]])
+  (into [] (rest [1 2 3 4]))
+  (format {:select [:pg/param 11] :from :me})
+  (format {:select [:pg/columns :a :b :c] :from :here})
+  (format {:select [:pg/columns :a [:b "deleted"] [:c 9]] :from :here})
+  )
