@@ -1093,9 +1093,17 @@
 (defn mk-columns [columns]
   (->> columns
        (reduce-kv
-        (fn [acc column opts]
-          (conj acc (str (name column) " " (str/join " " (map name opts)))))
-        [])
+         (fn [acc column val]
+           (cond
+             (vector? val)
+             (conj acc (str (name column) " " (str/join " " (map name val))))
+
+             (map? val)
+             (conj acc (str (name column) " "
+                            (name (:type val)) " "
+                            (when (:not-null val) "NOT NULL")
+                            (when (:primary-key val) "PRIMARY KEY")))))
+         [])
        (str/join ", ")))
 
 (defn mk-options [options]
@@ -1106,45 +1114,25 @@
         [])
        (str/join ", ")))
 
-(defmethod ql/to-sql :pg/create-table-v2
-  [acc opts {:keys [foreign unlogged options table columns server partition-by partition-of for] ifne :if-not-exists :as node}]
+(defmethod ql/to-sql
+  :pg/create-table
+  [acc opts {:keys [foreign unlogged table-name columns server partition-by
+                    partition-of for options] not-ex :if-not-exists :as node}]
   (-> acc
       (conj "CREATE")
       (cond-> unlogged (conj "UNLOGGED"))
       (cond-> foreign (conj "FOREIGN"))
       (conj "TABLE")
-      (cond-> ifne (conj "IF NOT EXISTS"))
-      (conj (name table))
-      (cond-> columns (conj "(" (mk-columns columns) ")"))
+      (cond-> not-ex (conj "IF NOT EXISTS"))
+      (identifier opts table-name)
+      (conj "(" (mk-columns columns) ")")
       (cond-> partition-of (conj "partition  of" (name partition-of) ))
       (cond-> for (conj "for values"
                         (when-let [f (:from for)] (str "from (" f ")"))
                         (when-let [t (:to   for)] (str "to   (" t ")"))))
       (cond-> partition-by (conj "partition  by" (name (:method partition-by)) " (" (name (:expr partition-by)) ")"))
       (cond-> server (conj "SERVER" (name server)))
-      (cond-> options (conj "OPTIONS ("  (mk-options options) ")"))
-      ))
-
-
-(defmethod ql/to-sql
-  :pg/create-table
-  [acc opts {unlogged :unlogged not-ex :if-not-exists tbl :table-name cols :columns}]
-  (-> acc
-      (conj "CREATE")
-      (cond-> unlogged (conj "UNLOGGED"))
-      (conj "TABLE")
-      (cond-> not-ex (conj "IF NOT EXISTS"))
-      (identifier opts tbl)
-      (conj "(")
-      (ql/reduce-separated2 ","
-                           (fn [acc [col-name col-def]]
-                             (-> acc
-                                 (conj (name col-name))
-                                 (conj (:type col-def))
-                                 (cond->
-                                     (:primary-key col-def) (conj "PRIMARY KEY")))
-                             ) cols)
-      (conj ")")))
+      (cond-> options (conj "OPTIONS ("  (mk-options options) ")"))))
 
 (defmethod ql/to-sql
   :pg/drop-table

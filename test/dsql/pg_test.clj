@@ -9,7 +9,6 @@
      res#))
 
 (deftest test-dsql-pgi
-
   (testing "select"
     (format=
      {:ql/type :pg/projection
@@ -550,17 +549,29 @@
      [:jsonb/#>> :d.resource [:partOf :id]]]
     ["( case ( resource->>'date' ) when ( '123' ) then ( e.resource ->> 'processed' ) when ( '456' ) then ( e.resource ->> 'order_id' ) else ( d.resource #>> '{partOf,id}' ) end )"])
 
-
-  (format=
-   {:ql/type :pg/create-table
-    :table-name "mytable"
-    :if-not-exists true
-    :unlogged true
-    :columns {:id          {:type "text" :primary-key true}
-              :filelds     {:type "jsonb"}
-              :match_tags  {:type "text[]"}
-              :dedup_tags  {:type "text[]"}}}
-   ["CREATE UNLOGGED TABLE IF NOT EXISTS mytable ( id text PRIMARY KEY , filelds jsonb , match_tags text[] , dedup_tags text[] )"])
+(testing "CREATE TABLE"
+ (format=
+  {:ql/type :pg/create-table
+   :table-name "mytable"
+   :if-not-exists true
+   :unlogged true
+   :columns {:id          {:type "text" :primary-key true}
+             :filelds     {:type "jsonb"}
+             :match_tags  {:type "text[]"}
+             :dedup_tags  {:type "text[]"}}
+   }
+  ["CREATE UNLOGGED TABLE IF NOT EXISTS mytable ( id text PRIMARY KEY, filelds jsonb , match_tags text[] , dedup_tags text[]  )"])
+ (format=
+  {:ql/type :pg/create-table
+   :table-name "mytable"
+   :columns {:id        [:uuid "not null"]
+             :version   [:uuid "not null"]
+             :cts       [:timestamptz "not null" :DEFAULT :current_timestamp]
+             :ts        [:timestamptz "not null" :DEFAULT :current_timestamp]
+             :status    [:resource_status "not null"]
+             :partition [:int "not null"]
+             :resource  [:jsonb "not null"]}}
+  ["CREATE TABLE mytable ( id uuid not null, version uuid not null, cts timestamptz not null DEFAULT current_timestamp, ts timestamptz not null DEFAULT current_timestamp, status resource_status not null, partition int not null, resource jsonb not null )"]))
 
   (format=
    {:ql/type :pg/drop-table

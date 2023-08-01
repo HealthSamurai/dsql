@@ -13,14 +13,7 @@
           (recur xs (conj acc' sep)))))))
 
 (defn reduce-separated2 [acc sep f coll]
-  (if (empty? coll)
-    acc
-    (loop [[x & xs] coll
-           acc acc]
-      (let [acc' (f acc x)]
-        (if (empty? xs)
-          acc'
-          (recur xs (conj acc' sep)))))))
+  (reduce-separated sep acc f coll))
 
 
 (defn reduce-acc [acc f coll]
