@@ -66,7 +66,10 @@
    (format=
     {:select [:pg/columns :a [:b "deleted"] [:c 9]] :from :user}
     ["SELECT a , ? b , ? c FROM user" "deleted" 9])
-   )
+
+   (format=
+    {:select [:pg/columns :a [:b :CURRENT_TIMESTAMP] [:c 9]] :from :user}
+    ["SELECT a , CURRENT_TIMESTAMP b , ? c FROM user" 9]))
 
   (format=
    (merge

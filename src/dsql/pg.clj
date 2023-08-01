@@ -1679,20 +1679,27 @@
 (defn join-vec [separator coll]
   (pop (reduce (fn [acc value] (into [] (concat acc value [separator]))) [] coll)))
 
+(defn parse-param
+  "Use keyword as a value if you don't want to make it a parameter."
+  [[alias value]]
+  (if (keyword? value)
+    [(name value) (name alias)]
+    [["?" value] (name alias)]))
+
 (defn parse-column [column]
   (cond
     (keyword? column) [(name column)]
-    (vector? column) [["?" (second column)] (name (first column))]))
+    (vector? column) (parse-param column)))
 
 (defmethod ql/to-sql
   :pg/columns
-  [acc opts node]
+  [acc _opts node]
   (into [] (concat acc (join-vec "," (->> (rest node) (mapv parse-column))))))
 
 (comment
   (join-vec "," [[1 2] [3] [4]])
   (into [] (rest [1 2 3 4]))
-  (format {:select [:pg/param 11] :from :me})
-  (format {:select [:pg/columns :a :b :c] :from :here})
-  (format {:select [:pg/columns :a [:b "deleted"] [:c 9]] :from :here})
+  (format {:select [:pg/param 11] :from :user})
+  (format {:select [:pg/columns :a :b :c] :from :user})
+  (format {:select [:pg/columns :a [:b :CURRENT_TIMESTAMP] [:c 9]] :from :user})
   )
