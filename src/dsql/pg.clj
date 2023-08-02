@@ -1106,7 +1106,12 @@
                    (name (:type val))
                    (when (:not-null val) "NOT NULL")
                    (when (:primary-key val) "PRIMARY KEY")
-                   (when (:default val) ["DEFAULT ?" (:default val)])]
+                   (when (:default val)
+                     ;; this is a workaround to make :current_timestamp work
+                     ;; TODO come up with a more clever design
+                     (if (keyword? (:default val))
+                       (str "DEFAULT " (name (:default val)))
+                       ["DEFAULT ?" (:default val)]))]
                   (filter some?)
                   (conj acc))))
          [])
@@ -1116,7 +1121,8 @@
   (mk-columns {:a {:type "text"}
                :b {:type "int" :not-null true}
                :c {:type "int" :default 8}
-               :d [:uuid "not null" :default "8"]}))
+               :d {:type "timestamp" :default :current_timestamp}
+               :e [:uuid "not null" :default "8"]}))
 
 (defn mk-options [options]
   (->> options
