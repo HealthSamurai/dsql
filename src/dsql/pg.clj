@@ -106,6 +106,9 @@
 (defn identifier [acc opts id]
   (conj acc (ql/escape-ident (:keywords opts) id)))
 
+(defn join-vec [separator coll]
+  (pop (reduce (fn [acc value] (into [] (concat acc value [separator]))) [] coll)))
+
 (def keys-for-select
   [[:explain :pg/explain]
    [:select :pg/projection]
@@ -1096,15 +1099,24 @@
          (fn [acc column val]
            (cond
              (vector? val)
-             (conj acc (str (name column) " " (str/join " " (map name val))))
+             (conj acc [(name column) (str/join " " (map name val))])
 
              (map? val)
-             (conj acc (str (name column) " "
-                            (name (:type val)) " "
-                            (when (:not-null val) "NOT NULL")
-                            (when (:primary-key val) "PRIMARY KEY")))))
+             (->> [(name column)
+                   (name (:type val))
+                   (when (:not-null val) "NOT NULL")
+                   (when (:primary-key val) "PRIMARY KEY")
+                   (when (:default val) ["DEFAULT ?" (:default val)])]
+                  (filter some?)
+                  (conj acc))))
          [])
-       (str/join ", ")))
+       (join-vec ",")))
+
+(comment
+  (mk-columns {:a {:type "text"}
+               :b {:type "int" :not-null true}
+               :c {:type "int" :default 8}
+               :d [:uuid "not null" :default "8"]}))
 
 (defn mk-options [options]
   (->> options
@@ -1125,7 +1137,7 @@
       (conj "TABLE")
       (cond-> not-ex (conj "IF NOT EXISTS"))
       (identifier opts table-name)
-      (cond-> columns (conj "(" (mk-columns columns) ")"))
+      (cond-> columns (into (concat ["("] (mk-columns columns) [")"])))
       (cond-> partition-of (conj "partition of" (name partition-of) ))
       (cond-> for (conj "for values"
                         (when-let [f (:from for)] (str "from (" f ")"))
@@ -1138,9 +1150,7 @@
   (format {:ql/type :pg/create-table
    :table-name "part"
    :if-not-exists true
-   :partition-by {:method :range :expr :partition}
-   :partition-of "whole"
-   :for {:from 0 :to 400}}))
+   :columns {:a {:type "int" :not-null true :default 8}}}))
 
 (defmethod ql/to-sql
   :pg/drop-table
@@ -1671,9 +1681,6 @@
       (conj "FOR"  (name user))
       (conj "SERVER" (name server))
       (cond-> options (conj "OPTIONS" "(" (mk-options options) ")"))))
-
-(defn join-vec [separator coll]
-  (pop (reduce (fn [acc value] (into [] (concat acc value [separator]))) [] coll)))
 
 (defn parse-param
   "Use keyword as a value if you don't want to make it a parameter."
