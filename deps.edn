@@ -11,7 +11,8 @@
                 nrepl/nrepl                   {:mvn/version "1.0.0"}
                 refactor-nrepl/refactor-nrepl {:mvn/version "3.6.0"}
 
-                honeysql/honeysql              {:mvn/version "1.0.461"}}
+                honeysql/honeysql {:mvn/version "1.0.461"}
+                lambdaisland/kaocha {:mvn/version "1.72.1136"}}
 
    :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]}
 

@@ -564,7 +564,6 @@
                                     (ql/to-sql opts node)
                                     (conj "as" (ql/escape-ident opts k))))))))
 
-
 (def index-keys
   [[:unique acc-identity]
    [:index identifier]
@@ -1117,13 +1116,6 @@
          [])
        (join-vec ",")))
 
-(comment
-  (mk-columns {:a {:type "text"}
-               :b {:type "int" :not-null true}
-               :c {:type "int" :default 8}
-               :d {:type "timestamp" :default :current_timestamp}
-               :e [:uuid "not null" :default "8"]}))
-
 (defn mk-options [options]
   (->> options
        (reduce-kv
@@ -1151,12 +1143,6 @@
       (cond-> partition-by (conj "partition by" (name (:method partition-by)) "(" (name (:expr partition-by)) ")"))
       (cond-> server (conj "SERVER" (name server)))
       (cond-> options (conj "OPTIONS ("  (mk-options options) ")"))))
-
-(comment
-  (format {:ql/type :pg/create-table
-   :table-name "part"
-   :if-not-exists true
-   :columns {:a {:type "int" :not-null true :default 8}}}))
 
 (defmethod ql/to-sql
   :pg/drop-table
@@ -1704,11 +1690,3 @@
   :pg/columns
   [acc _opts node]
   (into [] (concat acc (join-vec "," (->> (rest node) (mapv parse-column))))))
-
-(comment
-  (join-vec "," [[1 2] [3] [4]])
-  (into [] (rest [1 2 3 4]))
-  (format {:select [:pg/param 11] :from :user})
-  (format {:select [:pg/columns :a :b :c] :from :user})
-  (format {:select [:pg/columns :a [:b :CURRENT_TIMESTAMP] [:c 9]] :from :user})
-  )
