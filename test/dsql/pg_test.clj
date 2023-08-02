@@ -561,6 +561,7 @@
              :dedup_tags  {:type "text[]"}}
    }
   ["CREATE UNLOGGED TABLE IF NOT EXISTS mytable ( id text PRIMARY KEY, filelds jsonb , match_tags text[] , dedup_tags text[]  )"])
+
  (format=
   {:ql/type :pg/create-table
    :table-name "mytable"
@@ -571,7 +572,17 @@
              :status    [:resource_status "not null"]
              :partition [:int "not null"]
              :resource  [:jsonb "not null"]}}
-  ["CREATE TABLE mytable ( id uuid not null, version uuid not null, cts timestamptz not null DEFAULT current_timestamp, ts timestamptz not null DEFAULT current_timestamp, status resource_status not null, partition int not null, resource jsonb not null )"]))
+  ["CREATE TABLE mytable ( id uuid not null, version uuid not null, cts timestamptz not null DEFAULT current_timestamp, ts timestamptz not null DEFAULT current_timestamp, status resource_status not null, partition int not null, resource jsonb not null )"])
+
+ (testing "without columns"
+  (format=
+   {:ql/type :pg/create-table
+    :table-name "part"
+    :if-not-exists true
+    :partition-by {:method :range :expr :partition}
+    :partition-of "whole"
+    :for {:from 0 :to 400}}
+   ["CREATE TABLE IF NOT EXISTS part partition of whole for values from (0) to (400) partition by range ( partition )"])))
 
   (format=
    {:ql/type :pg/drop-table

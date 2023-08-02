@@ -1125,14 +1125,22 @@
       (conj "TABLE")
       (cond-> not-ex (conj "IF NOT EXISTS"))
       (identifier opts table-name)
-      (conj "(" (mk-columns columns) ")")
-      (cond-> partition-of (conj "partition  of" (name partition-of) ))
+      (cond-> columns (conj "(" (mk-columns columns) ")"))
+      (cond-> partition-of (conj "partition of" (name partition-of) ))
       (cond-> for (conj "for values"
                         (when-let [f (:from for)] (str "from (" f ")"))
-                        (when-let [t (:to   for)] (str "to   (" t ")"))))
-      (cond-> partition-by (conj "partition  by" (name (:method partition-by)) " (" (name (:expr partition-by)) ")"))
+                        (when-let [t (:to   for)] (str "to (" t ")"))))
+      (cond-> partition-by (conj "partition by" (name (:method partition-by)) "(" (name (:expr partition-by)) ")"))
       (cond-> server (conj "SERVER" (name server)))
       (cond-> options (conj "OPTIONS ("  (mk-options options) ")"))))
+
+(comment
+  (format {:ql/type :pg/create-table
+   :table-name "part"
+   :if-not-exists true
+   :partition-by {:method :range :expr :partition}
+   :partition-of "whole"
+   :for {:from 0 :to 400}}))
 
 (defmethod ql/to-sql
   :pg/drop-table
