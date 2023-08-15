@@ -1098,10 +1098,10 @@
          (fn [acc column val]
            (cond
              (vector? val)
-             (conj acc [(name column) (str/join " " (map name val))])
+             (conj acc [(str "\"" (name column) "\"") (str/join " " (map name val))])
 
              (map? val)
-             (->> [(name column)
+             (->> [(str "\"" (name column) "\"")
                    (name (:type val))
                    (when (:not-null val) "NOT NULL")
                    (when (:primary-key val) "PRIMARY KEY")
