@@ -560,7 +560,7 @@
              :match_tags  {:type "text[]"}
              :dedup_tags  {:type "text[]"}}
    }
-  ["CREATE UNLOGGED TABLE IF NOT EXISTS mytable ( id text PRIMARY KEY , filelds jsonb , match_tags text[] , dedup_tags text[] )"])
+  ["CREATE UNLOGGED TABLE IF NOT EXISTS mytable ( \"id\" text PRIMARY KEY , \"filelds\" jsonb , \"match_tags\" text[] , \"dedup_tags\" text[] )"])
 
  (format=
   {:ql/type :pg/create-table
@@ -572,20 +572,20 @@
              :status    [:resource_status "not null"]
              :partition [:int "not null"]
              :resource  [:jsonb "not null"]}}
-  ["CREATE TABLE mytable ( id uuid not null , version uuid not null , cts timestamptz not null DEFAULT current_timestamp , ts timestamptz not null DEFAULT current_timestamp , status resource_status not null , partition int not null , resource jsonb not null )"])
+  ["CREATE TABLE mytable ( \"id\" uuid not null , \"version\" uuid not null , \"cts\" timestamptz not null DEFAULT current_timestamp , \"ts\" timestamptz not null DEFAULT current_timestamp , \"status\" resource_status not null , \"partition\" int not null , \"resource\" jsonb not null )"])
 
  (testing "default value"
   (format=
    {:ql/type :pg/create-table
     :table-name "mytable"
     :columns {:a {:type "integer" :not-null true :default 8}}}
-   ["CREATE TABLE mytable ( a integer NOT NULL DEFAULT ? )" 8])
+   ["CREATE TABLE mytable ( \"a\" integer NOT NULL DEFAULT ? )" 8])
 
   (format=
    {:ql/type :pg/create-table
     :table-name "mytable"
     :columns {:a {:type "timestamp" :not-null true :default :current_timestamp}}}
-   ["CREATE TABLE mytable ( a timestamp NOT NULL DEFAULT current_timestamp )"]))
+   ["CREATE TABLE mytable ( \"a\" timestamp NOT NULL DEFAULT current_timestamp )"]))
 
  (testing "without columns"
   (format=
@@ -1088,7 +1088,7 @@
    {:ql/type :pg/alter-table
     :table "table1"
     :add {:primary-key [:a :b]}}
-   ["ALTER TABLE table1 ADD PRIMARY KEY ( a , b )"])
+   ["ALTER TABLE table1 ADD PRIMARY KEY ( \"a\" , \"b\" )"])
 
   (format=
    {:ql/type :pg/create-table-as

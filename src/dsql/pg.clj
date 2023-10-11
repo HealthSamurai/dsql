@@ -640,7 +640,7 @@
       (cond-> pk
         (-> (conj "PRIMARY KEY")
             (conj "(")
-            (ql/reduce-separated2 "," (fn [acc exp] (conj acc (name exp))) pk)
+            (ql/reduce-separated2 "," (fn [acc exp] (conj acc (str "\"" (name exp) "\""))) pk)
             (conj ")")))
       ))
 
