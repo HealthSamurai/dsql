@@ -1202,7 +1202,7 @@
       (identifier opts tbl)
       (cond->  (map? proj)
         (-> (conj "(")
-            (conj (->> (keys proj) (sort) (mapv name)  (str/join ", ")))
+            (conj (->> (keys proj) (sort) (mapv #(str "\"" (name %) "\""))  (str/join ", ")))
             (conj ")")))
       (ql/to-sql opts (assoc sel :ql/type :pg/sub-select))
       (cond->
@@ -1357,21 +1357,27 @@
       (conj "<>")
       (ql/to-sql opts b)))
 
+
+(defn concat-columns [cols]
+  (->> cols (mapv #(str "\"" (name %) "\""))  (str/join ", ")))
+
+
 (defmethod ql/to-sql
   :pg/insert-many
   [acc opts {tbl :into vls :values ret :returning on-conflict :on-conflict}]
-  (-> acc
-      (conj "INSERT INTO")
-      (conj (name tbl))
-      (conj "(")
-      (conj (->> (:keys vls) (mapv name)  (str/join ", ")))
-      (conj ")")
-      (ql/to-sql opts (with-meta vls {:ql/type :pg/values}))
-      (cond->
-          on-conflict (-> (conj "ON CONFLICT")
-                          (ql/to-sql opts (assoc on-conflict :ql/type :pg/conflict-update)))
-          ret (-> (conj "RETURNING")
-                  (ql/to-sql opts ret)))))
+  (let [cols (->> vls :keys)]
+    (-> acc
+       (conj "INSERT INTO")
+       (conj (name tbl))
+       (conj "(")
+       (conj (concat-columns cols ))
+       (conj ")")
+       (ql/to-sql opts (with-meta vls {:ql/type :pg/values}))
+       (cond->
+           on-conflict (-> (conj "ON CONFLICT")
+                           (ql/to-sql opts (assoc on-conflict :ql/type :pg/conflict-update)))
+           ret (-> (conj "RETURNING")
+                   (ql/to-sql opts ret))))))
 
 (defmethod ql/to-sql
   :pg/insert
@@ -1381,7 +1387,7 @@
         (conj "INSERT INTO")
         (conj (name tbl))
         (conj "(")
-        (conj (->> cols (mapv name)  (str/join ", ")))
+        (conj (concat-columns cols ))
         (conj ")")
         (conj "VALUES")
         (conj "(")

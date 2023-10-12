@@ -620,13 +620,13 @@
    {:ql/type :pg/insert-select
     :into :mytable
     :select {:select {:z :z :a "a" :b :b} :from :t}}
-   ["INSERT INTO mytable ( a, b, z ) ( SELECT 'a' as a , b as b , z as z FROM t )"])
+   ["INSERT INTO mytable ( \"a\", \"b\", \"z\" ) ( SELECT 'a' as a , b as b , z as z FROM t )"])
 
   (format=
    {:ql/type :pg/insert-select
     :into "mytable"
     :select {:select {:z :z :a "a" :b :b} :from :t}}
-   ["INSERT INTO mytable ( a, b, z ) ( SELECT 'a' as a , b as b , z as z FROM t )"])
+   ["INSERT INTO mytable ( \"a\", \"b\", \"z\" ) ( SELECT 'a' as a , b as b , z as z FROM t )"])
 
   (format=
    {:ql/type :pg/insert-select
@@ -636,21 +636,21 @@
                   :do {:set {:a :excluded.a}
                        :where [:= 1 2]}}}
 
-   ["INSERT INTO mytable ( a, b, z ) ( SELECT 'a' as a , b as b , z as z FROM t ) ON CONFLICT ( id ) DO UPDATE SET a = excluded.a WHERE 1 = 2"])
+   ["INSERT INTO mytable ( \"a\", \"b\", \"z\" ) ( SELECT 'a' as a , b as b , z as z FROM t ) ON CONFLICT ( id ) DO UPDATE SET a = excluded.a WHERE 1 = 2"])
 
   (format=
    {:ql/type :pg/insert-select
     :into :mytable
     :select {:select {:z :z :a "a" :b :b} :from :t}
     :on-conflict {:on [:id] :do :nothing}}
-   ["INSERT INTO mytable ( a, b, z ) ( SELECT 'a' as a , b as b , z as z FROM t ) ON CONFLICT ( id ) DO NOTHING"])
+   ["INSERT INTO mytable ( \"a\", \"b\", \"z\" ) ( SELECT 'a' as a , b as b , z as z FROM t ) ON CONFLICT ( id ) DO NOTHING"])
 
   (format=
    {:ql/type :pg/insert-select
     :into :mytable
     :select {:select {:z :z :a "a" :b :b} :from :t}
     :returning :*}
-   ["INSERT INTO mytable ( a, b, z ) ( SELECT 'a' as a , b as b , z as z FROM t ) RETURNING *"])
+   ["INSERT INTO mytable ( \"a\", \"b\", \"z\" ) ( SELECT 'a' as a , b as b , z as z FROM t ) RETURNING *"])
 
   (format=
     {:ql/type :pg/cte
@@ -739,9 +739,9 @@
 
   (format= {:ql/type :pg/insert
             :into :healthplan
-            :value {:a 1 :b :x :c "str"}
+            :value {:a 1 :b :x :c "str" :birthDate "1991-11-08"}
             :returning :*}
-           ["INSERT INTO healthplan ( a, b, c ) VALUES ( 1 , x , 'str' ) RETURNING *"])
+           ["INSERT INTO healthplan ( \"a\", \"b\", \"birthDate\", \"c\" ) VALUES ( 1 , x , '1991-11-08' , 'str' ) RETURNING *"])
 
 
   (format= {:ql/type :pg/insert
@@ -751,7 +751,7 @@
                           :do {:set {:a :excluded.a}
                                :where [:= 1 2]}}
             :returning :*}
-           ["INSERT INTO healthplan ( a, b, c ) VALUES ( 1 , x , 'str' ) ON CONFLICT ( id ) DO UPDATE SET a = excluded.a WHERE 1 = 2 RETURNING *"])
+           ["INSERT INTO healthplan ( \"a\", \"b\", \"c\" ) VALUES ( 1 , x , 'str' ) ON CONFLICT ( id ) DO UPDATE SET a = excluded.a WHERE 1 = 2 RETURNING *"])
 
   (format= [:resource|| ^:pg/obj{:a 1 :b 2}]
            ["resource || jsonb_build_object( 'a' , 1 , 'b' , 2 )"])
@@ -999,7 +999,7 @@
                :values [{:id 1 :resource "1" :status "ready"}
                         {:id 2 :status "failure"}]}
     :returning :*}
-   ["INSERT INTO conceptmaprule ( id, txid, resource, status ) VALUES ( 1 , NULL , '1' , 'ready' ) , ( 2 , NULL , NULL , 'failure' ) RETURNING *"])
+   ["INSERT INTO conceptmaprule ( \"id\", \"txid\", \"resource\", \"status\" ) VALUES ( 1 , NULL , '1' , 'ready' ) , ( 2 , NULL , NULL , 'failure' ) RETURNING *"])
 
   (format=
    {:ql/type :pg/select
