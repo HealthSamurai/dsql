@@ -33,6 +33,7 @@
              (meta node)))))
 
 (defn dispatch-sql [opts x]
+  (prn "->>> " x)
   (or
    (get-type x)
    (when-let [resolver (:resolve-type opts)]

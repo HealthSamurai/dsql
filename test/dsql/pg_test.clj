@@ -1,14 +1,45 @@
 (ns dsql.pg-test
   (:require [dsql.pg :as sut]
             [clojure.test :refer [deftest is testing]]
-            [dsql.core :as ql]))
+            [cheshire.core])
+  (:import  [com.fasterxml.jackson.databind   JsonNode ObjectMapper]))
 
 (defmacro format= [q patt]
   `(let [res# (sut/format ~q)]
      (is (= ~patt res#))
      res#))
 
+
+(defonce ^ObjectMapper object-mapper (ObjectMapper.))
+;; Only for tests purproses
+(defn to-jackson [o] (.readTree object-mapper (cheshire.core/generate-string o)) )
+
 (deftest test-dsql-pgi
+
+
+
+  (testing "jackson"
+    (def r
+      {:id              "fd209869-1f1c-42eb-b0bf-b5942370452c"
+       :meta_partition  123
+       :birthDate       "1991-11-08"
+       :name            [{:given "Ibragim"}]
+       :deceasedBoolean false
+       :extension       {:foo "bar"}} )
+    (format=
+     {:ql/type       :pg/insert
+      :into          :patient
+      :jackson-value (to-jackson r)
+      :returning     :*}
+     ["INSERT INTO patient ( \"id\", \"meta_partition\", \"birthDate\", \"name\", \"deceasedBoolean\", \"extension\" ) VALUES ( ? , ? , ? , ? , ? , ? ) RETURNING *"
+      "fd209869-1f1c-42eb-b0bf-b5942370452c"
+      "123"
+      "1991-11-08"
+      "[{\"given\":\"Ibragim\"}]"
+      "false"
+      "{\"foo\":\"bar\"}"])
+    )
+
   (testing "select"
     (format=
      {:ql/type :pg/projection

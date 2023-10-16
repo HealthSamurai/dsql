@@ -2,6 +2,8 @@
   (:require [dsql.core :as ql]
             [cheshire.core]
             [clojure.string :as str])
+  (:import [com.fasterxml.jackson.databind.node  ObjectNode ArrayNode TextNode IntNode BooleanNode]
+           [com.fasterxml.jackson.databind       JsonNode ObjectMapper])
   (:refer-clojure :exclude [format]))
 
 (def keywords
@@ -99,6 +101,9 @@
 ;; [ OFFSET начало [ ROW | ROWS ] ]
 ;; [ FETCH { FIRST | NEXT } [ число ] { ROW | ROWS } ONLY ]
 ;; [ FOR { UPDATE | NO KEY UPDATE | SHARE | KEY SHARE } [ OF имя_таблицы [, ...] ] [ NOWAIT | SKIP LOCKED ] [...] ]
+
+
+(defonce ^ObjectMapper object-mapper (ObjectMapper.))
 
 (defn acc-identity [acc & _]
   acc)
@@ -402,6 +407,20 @@
     (conj acc (ql/string-litteral (cheshire.core/generate-string (second v))))
     (conj acc (ql/string-litteral (cheshire.core/generate-string v)))))
 
+(defn to-json-string [^JsonNode json]
+  (.writeValueAsString object-mapper json))
+
+(defn jackson-param [acc v] (conj acc ["?" (to-json-string v)]))
+(defn jackson-param-as-text [acc ^JsonNode v] (conj acc ["?" (.asText v)]))
+
+(defmethod ql/to-sql ObjectNode  [acc opts v] (jackson-param acc v))
+(defmethod ql/to-sql ArrayNode   [acc opts v] (jackson-param acc v))
+(defmethod ql/to-sql TextNode    [acc opts v] (jackson-param-as-text acc v))
+(defmethod ql/to-sql IntNode     [acc opts v] (jackson-param-as-text acc v))
+(defmethod ql/to-sql BooleanNode [acc opts v] (jackson-param-as-text acc v))
+
+
+
 (defmethod ql/to-sql
   :pg/obj
   [acc opts obj]
@@ -659,14 +678,14 @@
 (defn resolve-type [x]
   (if-let [m (meta x)]
     (cond
-      (:pg/op m) :pg/op
-      (:pg/fn m) :pg/fn
-      (:pg/obj m) :pg/obj
-      (:jsonb/obj m) :jsonb/obj
-      (:jsonb/array m) :jsonb/array
-      (:pg/jsonb m) :pg/jsonb
-      (:pg/kfn m) :pg/kfn
-      (:pg/select m) :pg/select
+      (:pg/op m)         :pg/op
+      (:pg/fn m)         :pg/fn
+      (:pg/obj m)        :pg/obj
+      (:jsonb/obj m)     :jsonb/obj
+      (:jsonb/array m)   :jsonb/array
+      (:pg/jsonb m)      :pg/jsonb
+      (:pg/kfn m)        :pg/kfn
+      (:pg/select m)     :pg/select
       (:pg/sub-select m) :pg/sub-select
       :else nil)))
 
@@ -1379,10 +1398,23 @@
            ret (-> (conj "RETURNING")
                    (ql/to-sql opts ret))))))
 
+
+(defn jackson-get-keys [^ObjectNode object]
+  (let [it (.fieldNames object)]
+    (loop [keys []]
+      (if (.hasNext it)
+        (recur (conj keys (.next it)))
+        keys))))
+
+(defn get-by-key [^ObjectNode node ^String key]
+  (.get node key))
+
 (defmethod ql/to-sql
   :pg/insert
-  [acc opts {tbl :into vls :value ret :returning on-conflict :on-conflict}]
-  (let [cols (->> (keys vls) (sort))]
+  [acc opts {tbl :into vls :value jackson :jackson-value ret :returning on-conflict :on-conflict}]
+  (let [cols (if jackson
+               (jackson-get-keys jackson)
+               (->> (keys vls) (sort)))]
     (-> acc
         (conj "INSERT INTO")
         (conj (name tbl))
@@ -1391,7 +1423,12 @@
         (conj ")")
         (conj "VALUES")
         (conj "(")
-        (ql/reduce-separated2 "," (fn [acc c] (ql/to-sql acc opts (get vls c))) cols)
+        (ql/reduce-separated2
+         ","
+         (if jackson
+           (fn [acc c] (ql/to-sql acc opts (get-by-key jackson c)))
+           (fn [acc c] (ql/to-sql acc opts (get vls c))))
+         cols)
         (conj ")")
         (cond->
             on-conflict (-> (conj "ON CONFLICT")

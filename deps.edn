@@ -1,6 +1,8 @@
 {:paths ["src"]
- :deps {org.clojure/clojure  {:mvn/version "1.11.1"}
-        cheshire/cheshire {:mvn/version "5.11.0"}}
+ :deps {org.clojure/clojure                         {:mvn/version "1.11.1"}
+        cheshire/cheshire                           {:mvn/version "5.11.0"}
+        com.fasterxml.jackson.core/jackson-core     {:mvn/version "2.15.2"}
+        com.fasterxml.jackson.core/jackson-databind {:mvn/version "2.15.2"}}
 
  :aliases
  {:dev
