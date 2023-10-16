@@ -29,7 +29,7 @@
     (format=
      {:ql/type       :pg/insert
       :into          :patient
-      :jackson-value (to-jackson r)
+      :value         (to-jackson r)
       :returning     :*}
      ["INSERT INTO patient ( \"id\", \"meta_partition\", \"birthDate\", \"name\", \"deceasedBoolean\", \"extension\" ) VALUES ( ? , ? , ? , ? , ? , ? ) RETURNING *"
       "fd209869-1f1c-42eb-b0bf-b5942370452c"

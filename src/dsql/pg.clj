@@ -1411,9 +1411,9 @@
 
 (defmethod ql/to-sql
   :pg/insert
-  [acc opts {tbl :into vls :value jackson :jackson-value ret :returning on-conflict :on-conflict}]
-  (let [cols (if jackson
-               (jackson-get-keys jackson)
+  [acc opts {tbl :into vls :value  ret :returning on-conflict :on-conflict}]
+  (let [cols (if (= ObjectNode (type vls))
+               (jackson-get-keys vls)
                (->> (keys vls) (sort)))]
     (-> acc
         (conj "INSERT INTO")
@@ -1425,8 +1425,8 @@
         (conj "(")
         (ql/reduce-separated2
          ","
-         (if jackson
-           (fn [acc c] (ql/to-sql acc opts (get-by-key jackson c)))
+         (if (= ObjectNode (type vls))
+           (fn [acc c] (ql/to-sql acc opts (get-by-key vls c)))
            (fn [acc c] (ql/to-sql acc opts (get vls c))))
          cols)
         (conj ")")
