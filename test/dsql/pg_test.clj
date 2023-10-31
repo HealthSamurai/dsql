@@ -600,6 +600,12 @@
     ["( case ( resource->>'date' ) when ( '123' ) then ( e.resource ->> 'processed' ) when ( '456' ) then ( e.resource ->> 'order_id' ) else ( d.resource #>> '{partOf,id}' ) end )"])
 
 (testing "CREATE TABLE"
+  (format=
+   {:ql/type :pg/create-table
+    :table-name "\"MyTable\""
+    :columns {:a {:type "integer" }}}
+   ["CREATE TABLE \"MyTable\" ( \"a\" integer )"])
+
  (format=
   {:ql/type :pg/create-table
    :table-name "mytable"
@@ -625,6 +631,15 @@
   ["CREATE TABLE mytable ( \"id\" uuid not null , \"version\" uuid not null , \"cts\" timestamptz not null DEFAULT current_timestamp , \"ts\" timestamptz not null DEFAULT current_timestamp , \"status\" resource_status not null , \"partition\" int not null , \"resource\" jsonb not null )"])
 
  (testing "default value"
+
+
+
+  (format=
+   {:ql/type :pg/create-table
+    :table-name :mytable
+    :columns {:a {:type "integer" :not-null true :default 8}}}
+   ["CREATE TABLE mytable ( \"a\" integer NOT NULL DEFAULT ? )" 8])
+
   (format=
    {:ql/type :pg/create-table
     :table-name "mytable"

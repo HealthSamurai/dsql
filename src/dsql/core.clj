@@ -81,12 +81,15 @@
 (defn safe-identifier? [s]
   (some? (re-matches #"^[_a-zA-Z][_.a-zA-Z0-9]*$" s)))
 
+
 (defn escape-ident [keywords node]
   (let [norm-name (str/upper-case (name node))]
-    (if (or (not (safe-identifier? norm-name))
-            (contains? keywords (keyword norm-name)))
-      (str "\"" (name node) "\"")
-      (name node))))
+    (if  (= \" (first (name node)))
+      (name node)
+      (if (or (not (safe-identifier? norm-name))
+              (contains? keywords (keyword norm-name)))
+        (str "\"" (name node) "\"")
+        (name node)))))
 
 (defn parens [acc body-cb]
   (-> (conj acc "(")
