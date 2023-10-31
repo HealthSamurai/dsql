@@ -1,8 +1,6 @@
 {:paths ["src"]
- :deps {org.clojure/clojure                         {:mvn/version "1.11.1"}
-        cheshire/cheshire                           {:mvn/version "5.11.0"}
-        com.fasterxml.jackson.core/jackson-core     {:mvn/version "2.15.2"}
-        com.fasterxml.jackson.core/jackson-databind {:mvn/version "2.15.2"}}
+ :deps {org.clojure/clojure  {:mvn/version "1.11.1"}
+        metosin/jsonista     {:mvn/version "0.3.8"}}
 
  :aliases
  {:dev
@@ -13,10 +11,12 @@
                 nrepl/nrepl                   {:mvn/version "1.0.0"}
                 refactor-nrepl/refactor-nrepl {:mvn/version "3.6.0"}
 
-                honeysql/honeysql {:mvn/version "1.0.461"}
-                lambdaisland/kaocha {:mvn/version "1.72.1136"}}
+                honeysql/honeysql             {:mvn/version "1.0.461"}
+                lambdaisland/kaocha           {:mvn/version "1.72.1136"}}
 
-   :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]}
+   :jvm-opts ^:replace ["-XX:-OmitStackTraceInFastThrow"]
+   :main-opts   ["-e" "(set! *warn-on-reflection* true)"]}
+
 
   :kaocha
   {:extra-deps {lambdaisland/kaocha  {:mvn/version "1.72.1136"}}

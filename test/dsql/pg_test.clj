@@ -1,7 +1,7 @@
 (ns dsql.pg-test
   (:require [dsql.pg :as sut]
-            [clojure.test :refer [deftest is testing]]
-            [cheshire.core])
+            [jsonista.core :as json]
+            [clojure.test :refer [deftest is testing]])
   (:import  [com.fasterxml.jackson.databind   JsonNode ObjectMapper]))
 
 (defmacro format= [q patt]
@@ -10,13 +10,31 @@
      res#))
 
 
-(defonce ^ObjectMapper object-mapper (ObjectMapper.))
 ;; Only for tests purproses
-(defn to-jackson [o] (.readTree object-mapper (cheshire.core/generate-string o)) )
+(defonce ^ObjectMapper object-mapper (ObjectMapper.))
+(defn to-jackson [o] (.readTree object-mapper (json/write-value-as-string o)) )
 
 (deftest test-dsql-pgi
 
+  (testing "insert params"
+    (format=
+     {:ql/type       :pg/insert
+      :into          :patient
+      :as            :p
+      :value         {:id [:pg/param "id"] :gender [:pg/param "male"]}
+      :returning     [:pg/jsonb_strip_nulls [:pg/cast ^:pg/fn[:row_to_json :p.*] :jsonb]]}
+     ["INSERT INTO patient AS p ( \"id\", \"gender\" ) VALUES ( ? , ? ) RETURNING jsonb_strip_nulls( ( row_to_json( p.* ) )::jsonb )"
+      "id" "male"]))
 
+  (testing "returning"
+    (format=
+     {:ql/type       :pg/insert
+      :into          :patient
+      :as            :p
+      :value         {:id "id" :gender "male"}
+      :returning     [:pg/jsonb_strip_nulls [:pg/cast ^:pg/fn[:row_to_json :p.*] :jsonb]]}
+     ["INSERT INTO patient AS p ( \"id\", \"gender\" ) VALUES ( 'id' , 'male' ) RETURNING jsonb_strip_nulls( ( row_to_json( p.* ) )::jsonb )"]
+))
 
   (testing "jackson"
     (def r
@@ -26,6 +44,7 @@
        :name            [{:given "Ibragim"}]
        :deceasedBoolean false
        :extension       {:foo "bar"}} )
+
     (format=
      {:ql/type       :pg/insert
       :into          :patient
@@ -772,7 +791,7 @@
             :into :healthplan
             :value {:a 1 :b :x :c "str" :birthDate "1991-11-08"}
             :returning :*}
-           ["INSERT INTO healthplan ( \"a\", \"b\", \"birthDate\", \"c\" ) VALUES ( 1 , x , '1991-11-08' , 'str' ) RETURNING *"])
+           ["INSERT INTO healthplan ( \"a\", \"b\", \"c\", \"birthDate\" ) VALUES ( 1 , x , 'str' , '1991-11-08' ) RETURNING *"])
 
 
   (format= {:ql/type :pg/insert

@@ -1,6 +1,6 @@
 (ns dsql.pg
   (:require [dsql.core :as ql]
-            [cheshire.core]
+            [jsonista.core :as json]
             [clojure.string :as str])
   (:import [com.fasterxml.jackson.databind.node  ObjectNode ArrayNode TextNode IntNode BooleanNode]
            [com.fasterxml.jackson.databind       JsonNode ObjectMapper])
@@ -404,8 +404,8 @@
   :pg/jsonb
   [acc opts v]
   (if (= :pg/jsonb (first v))
-    (conj acc (ql/string-litteral (cheshire.core/generate-string (second v))))
-    (conj acc (ql/string-litteral (cheshire.core/generate-string v)))))
+    (conj acc (ql/string-litteral (json/write-value-as-string (second v))))
+    (conj acc (ql/string-litteral (json/write-value-as-string v)))))
 
 (defn to-json-string [^JsonNode json]
   (.writeValueAsString object-mapper json))
@@ -1411,13 +1411,15 @@
 
 (defmethod ql/to-sql
   :pg/insert
-  [acc opts {tbl :into vls :value  ret :returning on-conflict :on-conflict}]
+  [acc opts {tbl :into as :as vls :value  ret :returning on-conflict :on-conflict}]
   (let [cols (if (= ObjectNode (type vls))
                (jackson-get-keys vls)
-               (->> (keys vls) (sort)))]
+               (keys vls))]
     (-> acc
         (conj "INSERT INTO")
         (conj (name tbl))
+        (cond->
+            as (-> (conj "AS" (name as))))
         (conj "(")
         (conj (concat-columns cols ))
         (conj ")")

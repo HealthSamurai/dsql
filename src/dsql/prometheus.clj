@@ -1,6 +1,5 @@
 (ns dsql.prometheus
   (:require [dsql.core :as ql]
-            [cheshire.core]
             [clojure.string :as str])
   (:refer-clojure :exclude [format]))
 

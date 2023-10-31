@@ -132,8 +132,8 @@
 (defmethod ql/to-sql
   :hql/select
   [acc opts data]
-  (reduce
-   (fn [acc [k {:keys [type name add-as?]}]]
+  (reduce-kv
+   (fn [acc k {:keys [type name add-as?]}]
      (let [sub-node (get data k)]
        (if (and sub-node
                 (not (util/map-of-nils? sub-node)))
@@ -147,8 +147,8 @@
 (defmethod ql/to-sql
   :hql/join
   [acc opts join-clauses]
-  (reduce
-   (fn [acc [table condition]]
+  (reduce-kv
+   (fn [acc table condition]
      (-> acc
          (ql/to-sql (assoc opts :resolve-type projection-resolver) table)
          (conj "ON")
