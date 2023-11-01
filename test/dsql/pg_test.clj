@@ -22,6 +22,17 @@
       :into          :patient
       :as            :p
       :value         {:id [:pg/param "id"] :gender [:pg/param "male"]}
+      :returning     [:as [:pg/jsonb_strip_nulls [:pg/cast ^:pg/fn[:row_to_json :p.*] :jsonb]] "row"]}
+
+     ["INSERT INTO patient AS p ( \"id\", \"gender\" ) VALUES ( ? , ? ) RETURNING jsonb_strip_nulls( ( row_to_json( p.* ) )::jsonb ) AS row"
+      "id" "male"]))
+
+  (testing "insert params"
+    (format=
+     {:ql/type       :pg/insert
+      :into          :patient
+      :as            :p
+      :value         {:id [:pg/param "id"] :gender [:pg/param "male"]}
       :returning     [:pg/jsonb_strip_nulls [:pg/cast ^:pg/fn[:row_to_json :p.*] :jsonb]]}
      ["INSERT INTO patient AS p ( \"id\", \"gender\" ) VALUES ( ? , ? ) RETURNING jsonb_strip_nulls( ( row_to_json( p.* ) )::jsonb )"
       "id" "male"]))

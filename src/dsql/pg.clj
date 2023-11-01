@@ -1446,6 +1446,14 @@
       (ql/reduce-separated2 "||" (fn [acc expr] (ql/to-sql acc opts expr)) exprs)))
 
 (defmethod ql/to-sql
+  :as
+  [acc opts [_ expr alias]]
+  (-> acc
+      (ql/to-sql opts expr)
+      (conj "AS")
+      (conj alias)))
+
+(defmethod ql/to-sql
   :->>
   [acc opts [_ col k]]
   (-> acc
