@@ -1,8 +1,27 @@
 (ns dsql.core
   (:require [clojure.string :as str])
+  (:import  [java.util Iterator])
   (:refer-clojure :exclude [format]))
 
-(defn reduce-separated [sep acc f coll]
+(defn fast-join [^String sep ^Iterable coll]
+  (let [^Iterator iter (.iterator coll)
+        builder (StringBuilder.)]
+    (loop []
+      (when (.hasNext iter)
+        (let [s (.next iter)]
+          (.append builder (.toString s))
+          (when (.hasNext iter)
+            (.append builder sep)))
+        (recur)))
+    (.toString builder)))
+
+(defmacro build-string [& strs]
+  (let [w (gensym)]
+    `(let [~w (StringBuilder.)]
+       ~@(map (fn [arg] `(.append ~w ~arg)) strs)
+       (.toString ~w))))
+
+(defn reduce-separated-old [sep acc f  coll]
   (if (empty? coll)
     acc
     (loop [[x & xs] coll
@@ -11,6 +30,19 @@
         (if (empty? xs)
           acc'
           (recur xs (conj acc' sep)))))))
+
+(defn reduce-separated [sep acc f ^Iterable coll]
+  (if coll
+    (let [^Iterator iter (.iterator coll)]
+      (loop [acc acc]
+        (if (.hasNext iter)
+          (let [x (.next iter)
+                acc' (f acc x)]
+            (if (.hasNext iter)
+              (recur (conj acc' sep))
+              acc'))
+          acc)))
+    acc))
 
 (defn reduce-separated2 [acc sep f coll]
   (reduce-separated sep acc f coll))
@@ -40,11 +72,13 @@
    (and (sequential? x) (first x))
    (type x)))
 
-(defn escape-string [s]
-  (str/replace s #"'" "''"))
+(defn escape-string [^String s]
+  (when s
+    (.replace s "'" "''")))
+
 
 (defn string-litteral [s]
-  (str "'" (escape-string (if (keyword? s) (name s) s)) "'"))
+  (build-string "'" (escape-string (if (keyword? s) (name s) s)) "'"))
 
 (defn default-type [node tp]
   (if (and (not (get-type node)) (map? node))
@@ -88,7 +122,7 @@
       (name node)
       (if (or (not (safe-identifier? norm-name))
               (contains? keywords (keyword norm-name)))
-        (str "\"" (name node) "\"")
+        (build-string "\"" (name node) "\"")
         (name node)))))
 
 (defn parens [acc body-cb]
@@ -100,7 +134,7 @@
   (let [norm-name (str/upper-case (name node))]
     (if (or (not (safe-identifier? norm-name))
             (contains? keywords (keyword norm-name)))
-      (str "\"" (name node) "\"")
+      (build-string "\"" (name node) "\"")
       (name node))))
 
 (defmethod to-sql
@@ -123,15 +157,20 @@
   [acc _ _]
   (conj acc "NULL"))
 
+
 (defn format [opts node]
-  (let [sql-vec (to-sql [] opts node)]
+  (let [^Iterable sql-vec (to-sql [] opts node)
+        ^Iterator iter (.iterator sql-vec)
+        builder (StringBuilder.)]
     (assert (sequential? sql-vec) (pr-str sql-vec))
-    (loop [[x & xs] sql-vec
-           sql-str []
-           params []]
-      (let [[sql-str params] (if (vector? x)
-                               [(conj sql-str (first x)) (conj params (second x))]
-                               [(conj sql-str x) params])]
-        (if (empty? xs)
-          (into [(str/join " " sql-str)] params)
-          (recur xs sql-str params))))))
+    (loop [params  []]
+      (when (.hasNext iter)
+        (let [x (.next iter)
+              params (if (vector? x) (conj params (nth x 1)) params)]
+          (.append builder (if (vector? x) (nth x 0) x))
+          (if (.hasNext iter)
+            (do
+              (.append builder " ")
+              (recur params))
+            (into [(.toString builder)] params)
+            ))))))

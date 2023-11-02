@@ -3,7 +3,8 @@
             [jsonista.core :as json]
             [clojure.string :as str])
   (:import [com.fasterxml.jackson.databind.node  ObjectNode ArrayNode TextNode IntNode BooleanNode]
-           [com.fasterxml.jackson.databind       JsonNode ObjectMapper])
+           [com.fasterxml.jackson.databind       JsonNode ObjectMapper]
+           [java.util     Iterator])
   (:refer-clojure :exclude [format]))
 
 (def keywords
@@ -389,7 +390,7 @@
                  (conj ")")
                  (conj (name k))
                  (conj "(")
-                 (conj (str/join " , " (map name ks)))
+                 (conj (ql/fast-join " , " (map name ks)))
                  (conj ")"))
              (-> acc
                  (ql/to-sql opts sub-node)
@@ -493,7 +494,7 @@
                    (if (number? x)
                      x
                      (assert false (pr-str x)))))))
-       (str/join ",")))
+       (ql/fast-join ",")))
 
 
 (defn- to-array-value [arr]
@@ -744,6 +745,7 @@
 (defn format [node]
   (ql/format {:resolve-type #'resolve-type :keywords keywords} (ql/default-type node :pg/select)))
 
+
 (def keys-for-update
   [[:set :pg/set]
    [:from :pg/from]
@@ -756,7 +758,7 @@
   (assert (:update data) "Key :update is required!")
   (let [acc (conj acc "UPDATE")
         acc (conj acc (if (map? (:update data))
-                        (str/join " " (reverse (map name (first (:update data)))))
+                        (ql/fast-join " " (reverse (map name (first (:update data)))))
                         (name (:update data))))]
     (->> keys-for-update
         (ql/reduce-acc
@@ -1117,7 +1119,7 @@
          (fn [acc column val]
            (cond
              (vector? val)
-             (conj acc [(str "\"" (name column) "\"") (str/join " " (map name val))])
+             (conj acc [(str "\"" (name column) "\"") (ql/fast-join " " (map name val))])
 
              (map? val)
              (->> [(str "\"" (name column) "\"")
@@ -1141,7 +1143,7 @@
         (fn [acc opt val]
           (conj acc (str (name opt) " '" (name val) "'")))
         [])
-       (str/join ", ")))
+       (ql/fast-join ", ")))
 
 (defmethod ql/to-sql
   :pg/create-table
@@ -1221,7 +1223,7 @@
       (identifier opts tbl)
       (cond->  (map? proj)
         (-> (conj "(")
-            (conj (->> (keys proj) (sort) (mapv #(str "\"" (name %) "\""))  (str/join ", ")))
+            (conj (->> (keys proj) (sort) (mapv #(str "\"" (name %) "\""))  (ql/fast-join ", ")))
             (conj ")")))
       (ql/to-sql opts (assoc sel :ql/type :pg/sub-select))
       (cond->
@@ -1377,8 +1379,18 @@
       (ql/to-sql opts b)))
 
 
-(defn concat-columns [cols]
-  (->> cols (mapv #(str "\"" (name %) "\""))  (str/join ", ")))
+(defn concat-columns [^Iterable coll]
+  (let [^String sep ", "
+        ^Iterator iter (.iterator coll)
+        builder (StringBuilder.)]
+    (loop []
+      (when (.hasNext iter)
+        (let [s (.next iter)]
+          (.append builder "\"") (.append builder (name s)) (.append builder "\"")
+          (when (.hasNext iter)
+            (.append builder sep)))
+        (recur)))
+    (.toString builder)))
 
 
 (defmethod ql/to-sql
