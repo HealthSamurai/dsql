@@ -610,6 +610,7 @@
      [:jsonb/#>> :d.resource [:partOf :id]]]
     ["( case ( resource->>'date' ) when ( '123' ) then ( e.resource ->> 'processed' ) when ( '456' ) then ( e.resource ->> 'order_id' ) else ( d.resource #>> '{partOf,id}' ) end )"])
 
+
 (testing "CREATE TABLE"
   (format=
    {:ql/type :pg/create-table
@@ -643,25 +644,25 @@
 
  (testing "default value"
 
-
-
   (format=
    {:ql/type :pg/create-table
     :table-name :mytable
     :columns {:a {:type "integer" :not-null true :default 8}}}
-   ["CREATE TABLE mytable ( \"a\" integer NOT NULL DEFAULT ? )" 8])
+   ["CREATE TABLE mytable ( \"a\" integer NOT NULL DEFAULT 8 )"])
 
   (format=
    {:ql/type :pg/create-table
     :table-name "mytable"
     :columns {:a {:type "integer" :not-null true :default 8}}}
-   ["CREATE TABLE mytable ( \"a\" integer NOT NULL DEFAULT ? )" 8])
+   ["CREATE TABLE mytable ( \"a\" integer NOT NULL DEFAULT 8 )"])
 
   (format=
    {:ql/type :pg/create-table
     :table-name "mytable"
-    :columns {:a {:type "timestamp" :not-null true :default :current_timestamp}}}
-   ["CREATE TABLE mytable ( \"a\" timestamp NOT NULL DEFAULT current_timestamp )"]))
+    :columns {:ts          {:type "timestamp"       :default :current_timestamp :not-null true}
+              :meta_status {:type "resource_status" :default "created"          :not-null true}}}
+   ["CREATE TABLE mytable ( \"ts\" timestamp NOT NULL DEFAULT current_timestamp , \"meta_status\" resource_status NOT NULL DEFAULT 'created' )"])
+  )
 
  (testing "without columns"
   (format=

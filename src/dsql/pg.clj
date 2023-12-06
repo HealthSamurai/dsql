@@ -1113,29 +1113,22 @@
                          (conj ")"))))))
     ["end )"])))
 
-(defn mk-columns [columns]
+(defn mk-columns [opts columns]
   (->> columns
        (reduce-kv
-         (fn [acc column val]
+         (fn [acc column {:keys [type primary-key not-null default] :as val}]
            (cond
              (vector? val)
-             (conj acc [(str "\"" (name column) "\"") (ql/fast-join " " (map name val))])
+             (conj acc (str "\"" (name column) "\" " (str/join " " (map name val))))
 
              (map? val)
-             (->> [(str "\"" (name column) "\"")
-                   (name (:type val))
-                   (when (:not-null val) "NOT NULL")
-                   (when (:primary-key val) "PRIMARY KEY")
-                   (when (:default val)
-                     ;; this is a workaround to make :current_timestamp work
-                     ;; TODO come up with a more clever design
-                     (if (keyword? (:default val))
-                       (str "DEFAULT " (name (:default val)))
-                       ["DEFAULT ?" (:default val)]))]
-                  (filter some?)
-                  (conj acc))))
+             (conj acc
+                   (cond-> (str "\"" (name column) "\" " type)
+                     primary-key (str " PRIMARY KEY")
+                     not-null    (str " NOT NULL")
+                     default     (str " DEFAULT " (first (ql/to-sql [] opts default)))))))
          [])
-       (join-vec ",")))
+       (str/join " , ")))
 
 (defn mk-options [options]
   (->> options
@@ -1156,8 +1149,8 @@
       (conj "TABLE")
       (cond-> not-ex (conj "IF NOT EXISTS"))
       (identifier opts table-name)
-      (cond-> columns (into (concat ["("] (mk-columns columns) [")"])))
-      (cond-> partition-of (conj "partition of" (name partition-of) ))
+      (cond-> columns (conj (str "( " (mk-columns opts columns) " )")))
+      (cond-> partition-of (conj "partition of" (name partition-of)))
       (cond-> for (conj "for values"
                         (when-let [f (:from for)] (str "from (" f ")"))
                         (when-let [t (:to   for)] (str "to (" t ")"))))
