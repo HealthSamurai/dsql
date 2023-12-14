@@ -618,6 +618,20 @@
     :columns {:a {:type "integer" }}}
    ["CREATE TABLE \"MyTable\" ( \"a\" integer )"])
 
+
+  (format=
+   {:ql/type       :pg/create-table
+    :table-name    "patient_000"
+    :if-not-exists true
+    :constraint    {:primary-key [:id :partition]}
+    :partition-of  "patient"
+    :partition-by  {:method :range
+                    :expr   :partition}
+    :for           {:from 0 :to   1001}}
+  ["CREATE TABLE IF NOT EXISTS patient_000 partition of patient ( PRIMARY KEY (\"id\", \"partition\") ) for values from (0) to (1001) partition by range ( partition )"]
+   )
+
+
   (format=
    {:ql/type :pg/create-table
     :table-name "mytable"
