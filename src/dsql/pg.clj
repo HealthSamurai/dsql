@@ -1158,9 +1158,11 @@
       (conj "TABLE")
       (cond-> not-ex (conj "IF NOT EXISTS"))
       (identifier opts table-name)
-      (cond-> columns    (conj "(" (mk-columns opts columns)))
-      (cond-> constraint (conj "," (mk-table-constraint constraint)))
-      (cond-> columns    (conj ")"))
+      (cond-> (or columns constraint) (conj "("))
+      (cond-> columns    (conj (mk-columns opts columns)))
+      (cond-> (and columns constraint) (conj ","))
+      (cond-> constraint (conj (mk-table-constraint constraint)))
+      (cond-> (or columns constraint) (conj ")"))
 
       (cond-> partition-of (conj "partition of" (name partition-of) ))
       (cond-> for (conj "for values"

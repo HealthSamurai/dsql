@@ -621,6 +621,12 @@
   (format=
    {:ql/type :pg/create-table
     :table-name "mytable"
+    :constraint {:primary-key [:id :partition]}}
+   ["CREATE TABLE mytable ( PRIMARY KEY (\"id\", \"partition\") )"])
+
+  (format=
+   {:ql/type :pg/create-table
+    :table-name "mytable"
     :columns {:id        {:type "uuid"}
               :partition {:type "int"}
               :resource  {:type "jsonb"}}
