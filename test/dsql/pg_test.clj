@@ -618,6 +618,16 @@
     :columns {:a {:type "integer" }}}
    ["CREATE TABLE \"MyTable\" ( \"a\" integer )"])
 
+  (format=
+   {:ql/type :pg/create-table
+    :table-name "mytable"
+    :columns {:id        {:type "uuid"}
+              :partition {:type "int"}
+              :resource  {:type "jsonb"}}
+    :constraint {:primary-key [:id :partition]}}
+
+  ["CREATE TABLE mytable ( \"id\" uuid , \"partition\" int , \"resource\" jsonb , PRIMARY KEY (\"id\", \"partition\") )"]))
+
  (format=
   {:ql/type :pg/create-table
    :table-name "mytable"
@@ -672,7 +682,7 @@
     :partition-by {:method :range :expr :partition}
     :partition-of "whole"
     :for {:from 0 :to 400}}
-   ["CREATE TABLE IF NOT EXISTS part partition of whole for values from (0) to (400) partition by range ( partition )"])))
+   ["CREATE TABLE IF NOT EXISTS part partition of whole for values from (0) to (400) partition by range ( partition )"]))
 
   (format=
    {:ql/type :pg/drop-table

@@ -1138,9 +1138,18 @@
         [])
        (ql/fast-join ", ")))
 
+(defn mk-table-constraint [{:keys [primary-key] :as constraint}]
+  (str/join
+   ","
+   (cond-> []
+     primary-key
+     (conj (str "PRIMARY KEY (" (str/join ", " (map (fn [x] (str "\"" (name x) "\"")) primary-key)) ")")))))
+
+
 (defmethod ql/to-sql
   :pg/create-table
   [acc opts {:keys [foreign unlogged table-name columns server partition-by
+                    constraint
                     partition-of for options] not-ex :if-not-exists :as node}]
   (-> acc
       (conj "CREATE")
@@ -1149,8 +1158,11 @@
       (conj "TABLE")
       (cond-> not-ex (conj "IF NOT EXISTS"))
       (identifier opts table-name)
-      (cond-> columns (conj (str "( " (mk-columns opts columns) " )")))
-      (cond-> partition-of (conj "partition of" (name partition-of)))
+      (cond-> columns    (conj "(" (mk-columns opts columns)))
+      (cond-> constraint (conj "," (mk-table-constraint constraint)))
+      (cond-> columns    (conj ")"))
+
+      (cond-> partition-of (conj "partition of" (name partition-of) ))
       (cond-> for (conj "for values"
                         (when-let [f (:from for)] (str "from (" f ")"))
                         (when-let [t (:to   for)] (str "to (" t ")"))))
