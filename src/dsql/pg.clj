@@ -2,7 +2,7 @@
   (:require [dsql.core :as ql]
             [jsonista.core :as json]
             [clojure.string :as str])
-  (:import [com.fasterxml.jackson.databind.node  ObjectNode ArrayNode TextNode IntNode BooleanNode]
+  (:import [com.fasterxml.jackson.databind.node  ObjectNode ArrayNode TextNode IntNode BooleanNode DoubleNode LongNode]
            [com.fasterxml.jackson.databind       JsonNode ObjectMapper]
            [java.util     Iterator])
   (:refer-clojure :exclude [format]))
@@ -412,13 +412,16 @@
   (.writeValueAsString object-mapper json))
 
 (defn jackson-param [acc v] (conj acc ["?" (to-json-string v)]))
-(defn jackson-param-as-text [acc ^JsonNode v] (conj acc ["?" (.asText v)]))
+(defn jackson-param-as-text [acc ^JsonNode v]
+  (conj acc ["?" (.asText v)]))
 
 (defmethod ql/to-sql ObjectNode  [acc opts v] (jackson-param acc v))
 (defmethod ql/to-sql ArrayNode   [acc opts v] (jackson-param acc v))
 (defmethod ql/to-sql TextNode    [acc opts v] (jackson-param-as-text acc v))
 (defmethod ql/to-sql IntNode     [acc opts v] (jackson-param-as-text acc v))
 (defmethod ql/to-sql BooleanNode [acc opts v] (jackson-param-as-text acc v))
+(defmethod ql/to-sql DoubleNode  [acc opts v] (jackson-param-as-text acc v))
+(defmethod ql/to-sql LongNode    [acc opts v] (jackson-param-as-text acc v))
 
 
 

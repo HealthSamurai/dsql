@@ -51,6 +51,8 @@
     (def r
       {:id              "fd209869-1f1c-42eb-b0bf-b5942370452c"
        :meta_partition  123
+       :long            1234567890123
+       :double          123.123
        :birthDate       "1991-11-08"
        :name            [{:given "Ibragim"}]
        :deceasedBoolean false
@@ -61,9 +63,11 @@
       :into          :patient
       :value         (to-jackson r)
       :returning     :*}
-     ["INSERT INTO patient ( \"id\", \"meta_partition\", \"birthDate\", \"name\", \"deceasedBoolean\", \"extension\" ) VALUES ( ? , ? , ? , ? , ? , ? ) RETURNING *"
+     ["INSERT INTO patient ( \"id\", \"meta_partition\", \"long\", \"double\", \"birthDate\", \"name\", \"deceasedBoolean\", \"extension\" ) VALUES ( ? , ? , ? , ? , ? , ? , ? , ? ) RETURNING *"
       "fd209869-1f1c-42eb-b0bf-b5942370452c"
       "123"
+      "1234567890123"
+      "123.123"
       "1991-11-08"
       "[{\"given\":\"Ibragim\"}]"
       "false"
