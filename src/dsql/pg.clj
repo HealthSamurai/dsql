@@ -256,6 +256,11 @@
   (operator acc opts "||" args))
 
 (defmethod ql/to-sql
+  :&&
+  [acc opts [_ & args]]
+  (operator acc opts "&&" args))
+
+(defmethod ql/to-sql
   :pg/left-join
   [acc opts data]
   (->> (dissoc data :ql/type)
@@ -895,21 +900,27 @@
       (ql/to-sql opts x)
       (conj "WITH ORDINALITY")))
 
+(defn params-list [acc params]
+  (if (seq params)
+    (->> params
+         (ql/reduce-separated "," acc
+                              (fn [acc p]
+                                (conj acc ["?" p]))))
+    (throw (ex-info ":pg/params-list can not be empty"
+                    {:ql/type :pg/params-list
+                     :code :params-required}))))
 
 (defmethod ql/to-sql
   :pg/params-list
   [acc opts [_ params]]
-  (if (seq params)
-    (let [acc (conj acc "(")]
-      (->
-       (->> params
-            (ql/reduce-separated "," acc
-                                 (fn [acc p]
-                                   (conj acc ["?" p]))))
-       (conj  ")")))
-    (throw (ex-info ":pg/params-list can not be empty"
-                    {:ql/type :pg/params-list
-                     :code :params-required}))))
+  (-> (conj acc "(")
+      (params-list params)
+      (conj  ")")))
+
+(defmethod ql/to-sql
+  :pg/unwrapped-params-list
+  [acc opts [_ params]]
+  (params-list acc params))
 
 (defmethod ql/to-sql
   :pg/inplace-params-list
