@@ -1052,7 +1052,7 @@
    ["SELECT * FROM Patient WHERE EXTRACT( YEAR from ( ( resource -> 'birthDate' ) )::timestamp ) = '1980'"])
 
 
-  (format=
+  (format= ;;WARN DEPRICATED
    {:ql/type :pg/select
     :select  :*
     :from :Patient
@@ -1060,6 +1060,16 @@
                 [:#> :resource [:name 0 :family]]
                 [:#> :resource [:name 0 :given 0]]] :asc
                :id :desc}}
+   ["SELECT * FROM Patient ORDER BY ( ( resource #> '{name,0,family}' ) ) || ( ( resource #> '{name,0,given,0}' ) ) asc , id desc"])
+  
+  (format=
+   {:ql/type :pg/select
+    :select  :*
+    :from :Patient
+    :order-by [[[:||
+                 [:#> :resource [:name 0 :family]]
+                 [:#> :resource [:name 0 :given 0]]] :asc]
+               [:id :desc]]}
    ["SELECT * FROM Patient ORDER BY ( ( resource #> '{name,0,family}' ) ) || ( ( resource #> '{name,0,given,0}' ) ) asc , id desc"])
 
   (format=
