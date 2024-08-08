@@ -1066,10 +1066,13 @@
    {:ql/type :pg/select
     :select  :*
     :from :Patient
-    :order-by [[[:||
-                 [:#> :resource [:name 0 :family]]
-                 [:#> :resource [:name 0 :given 0]]] :asc]
-               [:id :desc]]}
+    :order-by (with-meta
+                [[[:||
+                   [:#> :resource [:name 0 :family]]
+                   [:#> :resource [:name 0 :given 0]]] :asc]
+                 [:id :desc]]
+                {:ql/type :pg/order-by}
+                )}
    ["SELECT * FROM Patient ORDER BY ( ( resource #> '{name,0,family}' ) ) || ( ( resource #> '{name,0,given,0}' ) ) asc , id desc"])
 
   (format=

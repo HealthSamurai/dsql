@@ -1,11 +1,16 @@
 .PHONY: up repl test down
 
+ifeq (repl,up))
+  include ./libs/sandata-configuration-project/.env
+  export
+endif
+
 up:
 	docker-compose up -d
-	source .env && clj -A:dev:storm -m nrepl.cmdline --middleware '[cider.nrepl/cider-middleware]'
+	clj -A:dev -m nrepl.cmdline --middleware '[cider.nrepl/cider-middleware]'
 
 repl:
-	source .env && clj -M:dev -m nrepl.cmdline --middleware '[cider.nrepl/cider-middleware]'
+	clj -M:dev -m nrepl.cmdline --middleware '[cider.nrepl/cider-middleware]'
 
 test:
 	clojure -M:dev:kaocha
