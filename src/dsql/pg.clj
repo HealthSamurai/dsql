@@ -428,61 +428,71 @@
 (defmethod ql/to-sql DoubleNode  [acc opts v] (jackson-param-as-text acc v))
 (defmethod ql/to-sql LongNode    [acc opts v] (jackson-param-as-text acc v))
 
-
-
-(defmethod ql/to-sql
+(defmethod dsql.core/to-sql
   :pg/obj
   [acc opts obj]
   (let [{:keys [eval-key]} (meta obj)
         acc (conj acc "jsonb_build_object(")
         acc (->> (dissoc obj :ql/type)
-                 (ql/reduce-separated
+                 (dsql.core/reduce-separated
                   "," acc
                   (fn [acc [k sub-node]]
                     (-> acc
                         (conj (if eval-key
                                 (name k)
-                                (ql/string-litteral (name k))))
+                                (dsql.core/string-litteral (name k))))
                         (conj ",")
-                        (ql/to-sql opts sub-node)))))]
+                        ((fn [acc']
+                           (if (string? sub-node)
+                             (conj acc' ["?::text", sub-node])
+                             (dsql.core/to-sql acc' opts sub-node))))))))]
     (conj acc ")")))
 
-(defmethod ql/to-sql
+(defmethod dsql.core/to-sql
   :jsonb/array
   [acc opts arr]
   (let [acc (conj acc "jsonb_build_array(")
         acc (->> arr
-                 (ql/reduce-separated
+                 (dsql.core/reduce-separated
                   "," acc
                   (fn [acc sub-node]
                     (-> acc
-                        (ql/to-sql opts sub-node)))))]
+                        ((fn [acc']
+                           (if (string? sub-node)
+                             (conj acc' ["?::text", sub-node])
+                             (dsql.core/to-sql acc' opts sub-node))))))))]
     (conj acc ")")))
 
-(defmethod ql/to-sql
+(defmethod dsql.core/to-sql
   :clj-arr->jsonb-arr
   [acc opts [_ & [els]]]
   (let [acc (conj acc "jsonb_build_array(")
         acc (->> els
-                 (ql/reduce-separated
+                 (dsql.core/reduce-separated
                   "," acc
                   (fn [acc sub-node]
                     (-> acc
-                        (ql/to-sql opts sub-node)))))]
+                        ((fn [acc']
+                           (if (string? sub-node)
+                             (conj acc' ["?::text", sub-node])
+                             (dsql.core/to-sql acc' opts sub-node))))))))]
     (conj acc ")")))
 
-(defmethod ql/to-sql
+(defmethod dsql.core/to-sql
   :jsonb/obj
   [acc opts obj]
   (let [acc (conj acc "jsonb_build_object(")
         acc (->> (dissoc obj :ql/type)
-                 (ql/reduce-separated
+                 (dsql.core/reduce-separated
                   "," acc
                   (fn [acc [k sub-node]]
                     (-> acc
-                        (conj (ql/string-litteral (name k)))
+                        (conj (dsql.core/string-litteral (name k)))
                         (conj ",")
-                        (ql/to-sql opts sub-node)))))]
+                        ((fn [acc']
+                           (if (string? sub-node)
+                             (conj acc' ["?::text", sub-node])
+                             (dsql.core/to-sql acc' opts sub-node))))))))]
     (conj acc ")")))
 
 (defn alpha-num? [s]

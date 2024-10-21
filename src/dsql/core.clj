@@ -150,7 +150,7 @@
 (defmethod to-sql
   java.lang.String
   [acc _opts node]
-  (conj acc (string-litteral node)))
+  (conj acc ["?" node]))
 
 (defmethod to-sql
   nil
