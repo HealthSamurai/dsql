@@ -1279,10 +1279,13 @@
   (-> acc
       (conj "WITH")
       (ql/reduce-separated2 "," (fn [acc [k v]]
-                                  (-> acc
-                                      (into [(name k) "AS" "("])
-                                      (ql/to-sql opts (update v :ql/type (fn [x] (or x :pg/select))))
-                                      (conj ")")))
+                                  (let [v (if (map? v)
+                                            (update v :ql/type (fn [x] (or x :pg/select)))
+                                            v)]
+                                    (-> acc
+                                        (into [(name k) "AS" "("])
+                                        (ql/to-sql opts v)
+                                        (conj ")"))))
                             (if (sequential? with) (partition 2 with) with))
       (ql/to-sql opts
                  (update sel :ql/type (fn [x] (or x :pg/select))))))
@@ -1521,7 +1524,11 @@
   (-> acc
       (conj "(")
       (ql/to-sql opts col)
-      (conj (str "-> " (ql/string-litteral (name k))))
+      (conj "-> ")
+      ((fn [acc]
+         (if (keyword? k)
+           (conj acc (ql/string-litteral (name k)))
+           (ql/to-sql acc opts k))))
       (conj ")")))
 
 (defmethod ql/to-sql
@@ -1796,3 +1803,11 @@
   :pg/columns
   [acc _opts node]
   (into [] (concat acc (join-vec "," (->> (rest node) (mapv parse-column))))))
+
+(defmethod ql/to-sql
+  :pg/raw-w-params
+  [acc _opts [_ raw & params]]
+  (reduce (fn [acc param]
+            (conj acc ["" param]))
+          (conj acc raw)
+          params))
